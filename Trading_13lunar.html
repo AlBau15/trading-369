@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>📊 Dashboard Trading Lunar · 13 Meses · Guía de Decisiones</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0c1117;
+            font-family: 'Segoe UI', 'Inter', system-ui, -apple-system, 'Roboto', sans-serif;
+            padding: 1.5rem;
+            color: #eef2ff;
+        }
+
+        .dashboard-container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Header */
+        .main-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .main-header h1 {
+            font-size: 2rem;
+            background: linear-gradient(135deg, #f3c682, #e2b45e);
+            background-clip: text;
+            -webkit-background-clip: text;
+            color: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .badge-lunar {
+            background: #1f2a3a;
+            padding: 0.3rem 1rem;
+            border-radius: 60px;
+            font-size: 0.8rem;
+            color: #bbd4f0;
+        }
+
+        .sub {
+            margin-top: 0.5rem;
+            color: #9aaec0;
+        }
+
+        /* Navegación */
+        .nav-controls {
+            background: #141e2c;
+            border-radius: 2rem;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            gap: 1rem;
+            border: 1px solid #2a3a48;
+        }
+
+        .selector-group {
+            display: flex;
+            gap: 1.2rem;
+            flex-wrap: wrap;
+            align-items: baseline;
+        }
+
+        .selector-group label {
+            font-weight: 600;
+            color: #cfdfed;
+        }
+
+        select, button {
+            background: #1f2e3c;
+            border: 1px solid #3d5a6c;
+            padding: 0.4rem 1rem;
+            border-radius: 2rem;
+            color: white;
+            font-weight: 500;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        button {
+            background: #2f4a5e;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            background: #3f627a;
+            transform: scale(0.98);
+        }
+
+        /* Tarjeta de decisión diaria */
+        .decision-card {
+            background: linear-gradient(125deg, #121c26, #0c1620);
+            border-radius: 2rem;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            border-left: 8px solid #e2b45e;
+            box-shadow: 0 12px 24px -12px rgba(0,0,0,0.5);
+        }
+
+        .decision-header {
+            display: flex;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            align-items: baseline;
+            margin-bottom: 1rem;
+        }
+
+        .decision-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+        }
+
+        .risk-tag {
+            background: #1f2e2e;
+            padding: 0.2rem 1rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .recomendacion {
+            font-size: 1.2rem;
+            background: #0f212e;
+            padding: 1rem;
+            border-radius: 1.5rem;
+            margin: 1rem 0;
+            border-left: 4px solid #f3c682;
+        }
+
+        .info-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-top: 1rem;
+            justify-content: space-between;
+        }
+
+        .info-item {
+            background: #0b141c;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-size: 0.85rem;
+        }
+
+        /* Guía de estrategia (5 puntos) */
+        .estrategia-card {
+            background: #0f1822;
+            border-radius: 1.8rem;
+            margin-bottom: 2rem;
+            border: 1px solid #2a3a48;
+            overflow: hidden;
+        }
+
+        .estrategia-header {
+            background: #1a2a36;
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: bold;
+            font-size: 1.2rem;
+        }
+
+        .estrategia-header:hover {
+            background: #233544;
+        }
+
+        .estrategia-contenido {
+            padding: 1.5rem;
+            display: none;
+            background: #0c1420;
+            border-top: 1px solid #2a3a48;
+        }
+
+        .estrategia-contenido.visible {
+            display: block;
+        }
+
+        .regla-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .regla-item {
+            background: #111b26;
+            border-radius: 1.2rem;
+            padding: 1rem;
+            border-left: 4px solid #e2b45e;
+        }
+
+        .regla-item h4 {
+            color: #f3c682;
+            margin-bottom: 0.5rem;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .regla-item p, .regla-item ul {
+            font-size: 0.85rem;
+            color: #cbdbe6;
+            margin-left: 1rem;
+        }
+        .regla-item li {
+            margin-bottom: 0.3rem;
+        }
+
+        /* Calendario mensual */
+        .month-view {
+            background: #0f1822;
+            border-radius: 1.8rem;
+            overflow-x: auto;
+            padding: 1rem;
+            margin-bottom: 2rem;
+            border: 1px solid #26333e;
+        }
+
+        .month-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 1rem;
+            background: #1e2f3b;
+            display: inline-block;
+            width: auto;
+            padding: 0.3rem 1.2rem;
+            border-radius: 40px;
+        }
+
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 6px;
+            margin-top: 1rem;
+        }
+
+        .weekday-label {
+            text-align: center;
+            font-weight: bold;
+            color: #bbcfdf;
+            padding: 0.5rem;
+            font-size: 0.8rem;
+        }
+
+        .day-cell {
+            background: #0b141f;
+            border-radius: 1rem;
+            padding: 0.6rem 0.2rem;
+            text-align: center;
+            font-size: 0.8rem;
+            transition: 0.1s;
+            cursor: pointer;
+            border: 1px solid #1f2e3a;
+        }
+
+        .day-cell:hover {
+            transform: scale(0.97);
+            background: #1f3443;
+        }
+
+        .luna-icon {
+            font-size: 1rem;
+            display: block;
+        }
+
+        .fase-sema {
+            font-size: 0.65rem;
+            opacity: 0.8;
+        }
+
+        .footer {
+            text-align: center;
+            font-size: 0.7rem;
+            margin-top: 2rem;
+            color: #6e8ea8;
+        }
+
+        @media (max-width: 700px) {
+            .day-cell { font-size: 0.7rem; padding: 0.3rem 0;}
+            .luna-icon { font-size: 0.8rem; }
+            .estrategia-header { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+<div class="dashboard-container">
+    <div class="main-header">
+        <h1>🌙 GUÍA DE TRADING LUNAR · 13 MESES <span class="badge-lunar">28 días · ciclo perfecto</span></h1>
+        <div class="sub">📆 Calendario estratégico con fases lunares reales (2026) · Decisión diaria integrada</div>
+    </div>
+
+    <div class="nav-controls">
+        <div class="selector-group">
+            <label>🌕 Mes Lunar:</label>
+            <select id="mesSelector"></select>
+            <label>📅 Día (1-28):</label>
+            <select id="diaSelector"></select>
+            <button id="irBtn">Ir al día ▶</button>
+        </div>
+        <div class="selector-group">
+            <span style="color:#ffd966">⚡ Hoy (simulado)</span>
+            <button id="hoyBtn">📌 Día actual</button>
+        </div>
+    </div>
+
+    <!-- Tarjeta de decisión diaria -->
+    <div id="decisionPanel" class="decision-card">
+        <div style="text-align:center;">Cargando calendario lunar...</div>
+    </div>
+
+    <!-- GUÍA DE TRADING LUNAR – 5 PUNTOS CLAVE (colapsable) -->
+    <div class="estrategia-card" id="estrategiaCard">
+        <div class="estrategia-header" id="toggleEstrategia">
+            📘 GUÍA DE TRADING LUNAR – TOMA DE DECISIONES (5 puntos clave)
+            <span id="toggleIcon">▼</span>
+        </div>
+        <div class="estrategia-contenido" id="estrategiaContenido">
+            <div class="regla-grid">
+                <div class="regla-item">
+                    <h4>1️⃣ Fases semanales y acción</h4>
+                    <ul>
+                        <li><strong>🌱 Iniciación (días 1-7):</strong> Observación, acumulación silenciosa. 0–20% capital.</li>
+                        <li><strong>📈 Crecimiento (días 8-14):</strong> Entradas agresivas, añadir a ganadores. 20–50%.</li>
+                        <li><strong>⚖️ Maduración (días 15-21):</strong> Mantener, ajustar stops, reducir a 30%.</li>
+                        <li><strong>🍂 Cosecha/Cierre (días 22-28):</strong> Tomar ganancias, cerrar especulativo. &lt;10%.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>2️⃣ Combinación con Lunas Llenas</h4>
+                    <ul>
+                        <li><strong>Llena en Iniciación:</strong> Falsa salida → esperar 48h.</li>
+                        <li><strong>Llena en Crecimiento:</strong> Ruptura alcista → añadir posición.</li>
+                        <li><strong>Llena en Maduración:</strong> Techo potencial → reducir 50%.</li>
+                        <li><strong>Llena en Cosecha:</strong> Giro brusco → cerrar todo.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>3️⃣ Días de Revisión Estratégica</h4>
+                    <ul>
+                        <li><strong>Día 10 del mes (Crecimiento):</strong> Revisar entradas de semana 1. Cortar pérdidas rápido.</li>
+                        <li><strong>Día 17 del mes (Maduración):</strong> Revisar divergencias, reducir apalancamiento.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>4️⃣ Eventos astrológicos como puntos de giro</h4>
+                    <ul>
+                        <li><strong>Equinoccios (marzo/sept):</strong> Cambio de tendencia principal. Defensivo 1 semana antes.</li>
+                        <li><strong>Solsticios (jun/dic):</strong> Máximos/mínimos de medio plazo. Tomar beneficios o preparar shorts.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>5️⃣ Flujo de decisión diario (checklist)</h4>
+                    <ul>
+                        <li>¿Fase semanal? → Iniciación (observa) / Crecimiento (entra) / Maduración (reduce) / Cosecha (vende).</li>
+                        <li>¿Luna Llena ±2 días? → Aplica regla específica.</li>
+                        <li>¿Día 10 o 17? → Revisión estratégica obligatoria.</li>
+                        <li>¿Evento astrológico ±3 días? → Reduce exposición 30%.</li>
+                        <li>¿Día 28? → Pasa a stablecoins hasta el día 1 siguiente.</li>
+                    </ul>
+                </div>
+            </div>
+            <div style="margin-top:1rem; text-align:center; font-size:0.8rem; background:#0a111a; padding:0.5rem; border-radius:2rem;">
+                🧠 Aplica estas reglas todos los días. El dashboard te dará la recomendación automática.
+            </div>
+        </div>
+    </div>
+
+    <!-- Vista mensual -->
+    <div id="monthlyView" class="month-view"></div>
+    <div class="footer">
+        🌕 Reglas Gann adaptadas | Fases lunares reales 2026 | Cada mes comienza domingo | 13 meses de 28 días + día fuera del tiempo
+    </div>
+</div>
+
+<script>
+    // ------------------------------------------------------------
+    // 1. GENERAR CALENDARIO COMPLETO 13 MESES 28 DIAS (364 días + día extra)
+    // ------------------------------------------------------------
+    const mesesNombres = [
+        "Mes 1 · Luna Nevada", "Mes 2 · Luna Helada", "Mes 3 · Luna Lluvias", "Mes 4 · Luna Floración",
+        "Mes 5 · Luna Brillo", "Mes 6 · Luna Serena", "Mes 7 · Luna Cosecha", "Mes 8 · Luna Espejismo",
+        "Mes 9 · Luna Silvestre", "Mes 10 · Luna Ancestral", "Mes 11 · Luna Eterna", "Mes 12 · Luna Cristal",
+        "Mes 13 · Luna Sueño"
+    ];
+
+    // Eventos astrológicos fijos 2026 (gregoriano)
+    const eventosAstro = {
+        "2026-03-20": "🌱 Equinoccio Primavera",
+        "2026-06-21": "☀️ Solsticio Verano",
+        "2026-09-22": "🍂 Equinoccio Otoño",
+        "2026-12-21": "❄️ Solsticio Invierno",
+        "2026-12-31": "🕯️ Día Fuera del Tiempo · Reset"
+    };
+
+    // Función para calcular fase lunar real (aprox) dado un objeto Date
+    function getMoonPhase(date) {
+        const refNewMoon = new Date(Date.UTC(2026, 0, 18, 4, 0, 0));
+        const msPerDay = 86400000;
+        const diasDesdeRef = (date - refNewMoon) / msPerDay;
+        const cicloLunar = 29.53058867;
+        let edad = ((diasDesdeRef % cicloLunar) + cicloLunar) % cicloLunar;
+        if (edad < 1.0) return { fase: "🌑 Luna Nueva", tipo: "new", accion: "Reinicio de ciclos" };
+        if (edad < 6.4) return { fase: "🌒 Cuarto Creciente", tipo: "waxing_crescent", accion: "Inicio momentum" };
+        if (edad < 8.5) return { fase: "🌓 Cuarto Creciente", tipo: "first_quarter", accion: "Tensión · posible giro" };
+        if (edad < 13.6) return { fase: "🌔 Gibosa Creciente", tipo: "waxing_gibbous", accion: "Fuerza alcista" };
+        if (edad < 15.6) return { fase: "🌕 Luna Llena", tipo: "full", accion: "Máxima volatilidad" };
+        if (edad < 20.7) return { fase: "🌖 Gibosa Menguante", tipo: "waning_gibbous", accion: "Distribución" };
+        if (edad < 22.7) return { fase: "🌗 Cuarto Menguante", tipo: "last_quarter", accion: "Corrección" };
+        if (edad < 27.8) return { fase: "🌘 Menguante", tipo: "waning_crescent", accion: "Contracción" };
+        return { fase: "🌑 Luna Nueva", tipo: "new", accion: "Cierre de ciclo" };
+    }
+
+    // Generar todos los días
+    let calendario = [];
+    let fechaActual = new Date(2026, 0, 1);
+    let lunarMonth = 1;
+    let lunarDay = 1;
+    while (lunarMonth <= 13) {
+        while (lunarDay <= 28 && lunarMonth <= 13) {
+            const gregorio = new Date(fechaActual);
+            const iso = gregorio.toISOString().split('T')[0];
+            const weekday = gregorio.getDay();
+            const nombreDiaSemana = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"][weekday];
+            let faseSemanal = "";
+            if (lunarDay <= 7) faseSemanal = "🌱 Iniciación";
+            else if (lunarDay <= 14) faseSemanal = "📈 Crecimiento";
+            else if (lunarDay <= 21) faseSemanal = "⚖️ Maduración";
+            else faseSemanal = "🍂 Cosecha/Cierre";
+            
+            let alerta = "";
+            if (lunarDay === 10 || lunarDay === 17) alerta = "🔁 Revisión Estratégica";
+            let evento = eventosAstro[iso] || "";
+            const moon = getMoonPhase(gregorio);
+            
+            calendario.push({
+                lunarMonth, lunarDay, gregorio: iso, weekday: nombreDiaSemana,
+                faseSemanal, alerta, evento, moonPhase: moon.fase, moonType: moon.tipo,
+            });
+            
+            fechaActual.setDate(fechaActual.getDate() + 1);
+            lunarDay++;
+        }
+        lunarMonth++;
+        lunarDay = 1;
+    }
+    // Día fuera del tiempo (31 dic)
+    const diaExtra = new Date(2026, 11, 31);
+    calendario.push({
+        lunarMonth: "Cierre", lunarDay: 1, gregorio: "2026-12-31", weekday: "Jueves",
+        faseSemanal: "🔄 RESETEO", alerta: "Balance Final", evento: "🕯️ Día Fuera del Tiempo · Cierre anual",
+        moonPhase: getMoonPhase(diaExtra).fase, moonType: "reset",
+    });
+
+    function getDiaByLunar(month, day) {
+        if (month >= 1 && month <= 13) {
+            return calendario.find(d => d.lunarMonth === month && d.lunarDay === day);
+        }
+        return null;
+    }
+    
+    // Reglas de decisión de trading combinando fase semanal, moon, alertas, evento
+    function getTradingDecision(dia) {
+        if (!dia) return { recomendacion: "Día inválido", riesgo: "N/A", color: "info" };
+        const fase = dia.faseSemanal;
+        const moon = dia.moonPhase;
+        const alerta = dia.alerta;
+        const evento = dia.evento;
+        let recomendacion = "";
+        let riesgo = "Moderado";
+        let color = "amarilla";
+        
+        if (fase.includes("Iniciación")) {
+            recomendacion = "🔍 OBSERVACIÓN · Acumulación silenciosa. No abrir posiciones grandes.";
+            riesgo = "Bajo";
+            color = "info";
+            if (moon.includes("Luna Llena")) recomendacion += " ⚠️ Luna Llena en Iniciación: posible fakeout, esperar 48h.";
+            if (moon.includes("Nueva")) recomendacion += " 🌑 Luna Nueva: momento de replantear estructura.";
+        }
+        else if (fase.includes("Crecimiento")) {
+            recomendacion = "📈 ENTRADAS AGRESIVAS · Buscar rupturas, añadir a ganadores.";
+            riesgo = "Moderado";
+            color = "verde";
+            if (moon.includes("Llena")) recomendacion = "🚀 LUNA LLENA EN CRECIMIENTO · Alta probabilidad de ruptura alcista. Añadir exposición.";
+            if (moon.includes("Gibosa Creciente")) recomendacion = "💪 Fuerza en desarrollo, aumentar stops dinámicos.";
+            if (alerta) recomendacion += " · 🔁 Revisión estratégica: ajustar stops.";
+        }
+        else if (fase.includes("Maduración")) {
+            recomendacion = "⚠️ MANTENER Y REDUCIR · Ajustar stops, no nuevas entradas. Buscar divergencias.";
+            riesgo = "Alto";
+            color = "roja";
+            if (moon.includes("Llena")) recomendacion = "🔻 LUNA LLENA EN MADURACIÓN: posible techo. Reducir exposición 50%.";
+            if (moon.includes("Cuarto Menguante")) recomendacion += " · Señal de corrección inminente.";
+        }
+        else if (fase.includes("Cosecha")) {
+            recomendacion = "💰 TOMAR GANANCIAS · Cerrar posiciones especulativas. Solo capital estable.";
+            riesgo = "Muy Alto";
+            color = "roja";
+            if (moon.includes("Llena")) recomendacion = "🌀 LUNA LLENA EN COSECHA: Cierre total, pasar a stablecoins.";
+            if (alerta) recomendacion += " · Revisión final del ciclo.";
+        }
+        else if (fase.includes("RESETEO")) {
+            recomendacion = "🕯️ DÍA FUERA DEL TIEMPO · No operar. Revisión anual, meditación y planificación.";
+            riesgo = "Neutro";
+            color = "info";
+        }
+        
+        if (evento && !recomendacion.includes(evento)) {
+            recomendacion += ` ✨ Evento: ${evento} — incrementa volatilidad. Reducir exposición ±3 días.`;
+            riesgo = "Alto";
+        }
+        if (alerta && !recomendacion.includes("Revisión")) {
+            recomendacion += ` · ${alerta}: revisa portafolio obligatoriamente.`;
+        }
+        return { recomendacion, riesgo, color };
+    }
+    
+    // Render panel de decisión del día
+    function renderDecisionPanel(month, day) {
+        const diaData = getDiaByLunar(month, day);
+        if (!diaData) {
+            document.getElementById("decisionPanel").innerHTML = `<div style="padding:1rem;">❌ Dato no encontrado</div>`;
+            return;
+        }
+        const decision = getTradingDecision(diaData);
+        const riesgoColor = decision.riesgo === "Bajo" ? "#4caf50" : (decision.riesgo === "Alto" ? "#f44336" : "#ffc107");
+        document.getElementById("decisionPanel").innerHTML = `
+            <div class="decision-header">
+                <div class="decision-title">📅 ${mesesNombres[month-1]} · Día ${diaData.lunarDay} (${diaData.weekday})</div>
+                <div class="risk-tag" style="background:${riesgoColor}30; border:1px solid ${riesgoColor}">⚠️ Riesgo ${decision.riesgo}</div>
+            </div>
+            <div class="recomendacion">${decision.recomendacion}</div>
+            <div class="info-grid">
+                <div class="info-item">🌙 Fase semanal: ${diaData.faseSemanal}</div>
+                <div class="info-item">🌓 Luna real: ${diaData.moonPhase}</div>
+                <div class="info-item">📆 Gregoriano: ${diaData.gregorico}</div>
+                ${diaData.alerta ? `<div class="info-item">🔔 Alerta: ${diaData.alerta}</div>` : ''}
+                ${diaData.evento ? `<div class="info-item">✨ ${diaData.evento}</div>` : ''}
+            </div>
+            <div style="margin-top:12px; font-size:0.75rem; opacity:0.7;">⚡ Acción sugerida: ${decision.recomendacion.substring(0,100)}</div>
+        `;
+    }
+    
+    // Vista mensual
+    function renderMonthView(month) {
+        const monthDays = calendario.filter(d => d.lunarMonth === month && typeof d.lunarDay === 'number');
+        monthDays.sort((a,b)=>a.lunarDay - b.lunarDay);
+        const container = document.getElementById("monthlyView");
+        const semanaHeaders = ["D","L","M","M","J","V","S"];
+        let html = `<div style="display:flex; justify-content:space-between;"><div class="month-title">📆 ${mesesNombres[month-1]} · 28 días</div><div style="font-size:0.7rem;">🌙 Clic en día para consultar</div></div>`;
+        html += `<div class="calendar-grid">`;
+        semanaHeaders.forEach(h => html += `<div class="weekday-label">${h}</div>`);
+        
+        for (let i = 1; i <= 28; i++) {
+            const dia = monthDays.find(d => d.lunarDay === i);
+            if (!dia) continue;
+            const decision = getTradingDecision(dia);
+            let bgColor = "";
+            if (decision.color === "verde") bgColor = "#1f4930";
+            else if (decision.color === "roja") bgColor = "#5e2a2a";
+            else bgColor = "#1e3a47";
+            const moonEmoji = dia.moonPhase.split(" ")[0];
+            html += `<div class="day-cell" style="background:${bgColor};" onclick="selectDay(${month}, ${i})">
+                        <div><strong>${i}</strong></div>
+                        <div class="luna-icon">${moonEmoji}</div>
+                        <div class="fase-sema">${dia.faseSemanal.substring(0,2)}</div>
+                    </div>`;
+        }
+        html += `</div>`;
+        container.innerHTML = html;
+    }
+    
+    // Selectores
+    function populateSelectors() {
+        const mesSelect = document.getElementById("mesSelector");
+        const diaSelect = document.getElementById("diaSelector");
+        mesSelect.innerHTML = "";
+        for (let i = 1; i <= 13; i++) {
+            const option = document.createElement("option");
+            option.value = i;
+            option.textContent = `${mesesNombres[i-1]}`;
+            mesSelect.appendChild(option);
+        }
+        function actualizarDiasSelect(month) {
+            diaSelect.innerHTML = "";
+            for (let d = 1; d <= 28; d++) {
+                const opt = document.createElement("option");
+                opt.value = d;
+                opt.textContent = `Día ${d}`;
+                diaSelect.appendChild(opt);
+            }
+        }
+        mesSelect.addEventListener("change", () => {
+            actualizarDiasSelect(parseInt(mesSelect.value));
+            renderMonthView(parseInt(mesSelect.value));
+            const diaVal = parseInt(diaSelect.value);
+            renderDecisionPanel(parseInt(mesSelect.value), diaVal);
+        });
+        diaSelect.addEventListener("change", () => {
+            const mes = parseInt(mesSelect.value);
+            const dia = parseInt(diaSelect.value);
+            renderDecisionPanel(mes, dia);
+            renderMonthView(mes);
+        });
+        actualizarDiasSelect(1);
+        mesSelect.value = "1";
+        renderMonthView(1);
+        renderDecisionPanel(1,1);
+        
+        document.getElementById("irBtn").addEventListener("click", () => {
+            const mes = parseInt(mesSelect.value);
+            const dia = parseInt(diaSelect.value);
+            renderDecisionPanel(mes, dia);
+            renderMonthView(mes);
+        });
+        document.getElementById("hoyBtn").addEventListener("click", () => {
+            const hoyStr = new Date().toISOString().split('T')[0];
+            const hoyData = calendario.find(d => d.gregorico === hoyStr);
+            if (hoyData && hoyData.lunarMonth <= 13) {
+                const mes = hoyData.lunarMonth;
+                const dia = hoyData.lunarDay;
+                document.getElementById("mesSelector").value = mes;
+                const diaSelect = document.getElementById("diaSelector");
+                diaSelect.innerHTML = "";
+                for (let d=1;d<=28;d++) diaSelect.innerHTML += `<option value="${d}">Día ${d}</option>`;
+                diaSelect.value = dia;
+                renderDecisionPanel(mes, dia);
+                renderMonthView(mes);
+            } else {
+                alert("Demo: Hoy no encontrado, mostrando mes 1 día 1");
+                renderDecisionPanel(1,1);
+            }
+        });
+    }
+    
+    window.selectDay = function(month, day) {
+        document.getElementById("mesSelector").value = month;
+        const diaSelect = document.getElementById("diaSelector");
+        diaSelect.innerHTML = "";
+        for (let d=1;d<=28;d++) diaSelect.innerHTML += `<option value="${d}">Día ${d}</option>`;
+        diaSelect.value = day;
+        renderDecisionPanel(month, day);
+        renderMonthView(month);
+    };
+    
+    // Acordeón para la guía
+    const toggleBtn = document.getElementById("toggleEstrategia");
+    const contenido = document.getElementById("estrategiaContenido");
+    const icon = document.getElementById("toggleIcon");
+    toggleBtn.addEventListener("click", () => {
+        contenido.classList.toggle("visible");
+        icon.textContent = contenido.classList.contains("visible") ? "▲" : "▼";
+    });
+    // Abrir por defecto para que se vea la guía
+    contenido.classList.add("visible");
+    icon.textContent = "▲";
+    
+    populateSelectors();
+</script>
+</body>
+</html>
