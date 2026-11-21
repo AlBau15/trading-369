@@ -4,6 +4,16 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
     <title>📊 Dashboard Trading Lunar · 13 Meses · Guía de Decisiones</title>
+    <!-- App instalable (PWA) -->
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#0c1117">
+    <meta name="description" content="Dashboard de trading lunar: ciclos lunares, presión combinada, visión macro del zodiaco y estadística de BTC.">
+    <link rel="icon" type="image/png" href="icons/favicon-64.png">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black">
+    <meta name="apple-mobile-web-app-title" content="Trading 369">
     <style>
         * {
             margin: 0;
@@ -2025,6 +2035,17 @@
                 btcPrecios = await cargarCoinGecko();
                 btcFuente = "CoinGecko (BTC/USD, último año)";
             } catch (e2) {
+                // Sin conexión: usar la última copia guardada aunque sea vieja
+                try {
+                    const c = JSON.parse(localStorage.getItem("btcCache") || "null");
+                    if (c) {
+                        btcPrecios = new Map(c.d);
+                        btcFuente = `${c.f} · sin conexión, datos guardados del ${new Date(c.t).toLocaleDateString("es-MX")}`;
+                        btcEstado = "ok";
+                        refrescarBTC();
+                        return;
+                    }
+                } catch (e3) {}
                 btcEstado = "error";
                 refrescarBTC();
                 return;
@@ -2050,6 +2071,11 @@
 
     populateSelectors();
     cargarBTC();
+
+    // App instalable: registrar el service worker (modo sin conexión)
+    if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+        navigator.serviceWorker.register("sw.js").catch(() => {});
+    }
 </script>
 </body>
 </html>

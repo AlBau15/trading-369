@@ -8,6 +8,15 @@ Calendario estratégico que combina **ciclos lunares** con el comportamiento rea
 
 ---
 
+## 📱 Instalar como app
+
+El dashboard es una **app web instalable (PWA)**: la misma página, pero con ícono propio, pantalla completa y modo sin conexión.
+
+- **iPhone:** abre [albau15.github.io/trading-369](https://albau15.github.io/trading-369/) en **Safari** → botón **Compartir** → **"Agregar a inicio"**.
+- **Android:** ábrelo en **Chrome** → menú **⋮** → **"Instalar app"** (o "Agregar a pantalla principal").
+
+Sin internet, el calendario, las fases y la presión siguen funcionando; los precios de BTC usan la última copia guardada. Cada mejora que se sube al repositorio llega sola a la app.
+
 ## ¿Qué hace?
 
 - **Te dice en qué etapa del ciclo estás hoy**: Iniciación, Crecimiento, Maduración o Cosecha, con una recomendación y un nivel de riesgo.
@@ -91,10 +100,13 @@ Al final de la página hay cuatro tarjetas que se calculan solas con el historia
 
 ## Estructura
 
-Todo el proyecto está en un solo archivo, sin instalación ni dependencias:
+El dashboard completo está en un solo archivo, sin instalación ni dependencias:
 
 ```
 index.html             Página principal de GitHub Pages (abre el dashboard)
+manifest.webmanifest   Datos de la app instalable (nombre, ícono, colores)
+sw.js                  Service worker: modo sin conexión
+icons/                 Íconos de la app
 Trading_13lunar.html   Dashboard completo (HTML + CSS + JavaScript)
 README.md              Este documento
 ```

@@ -1,0 +1,18 @@
+{
+  "name": "Trading 369 · Dashboard Lunar",
+  "short_name": "Trading 369",
+  "description": "Dashboard de trading lunar: calendario de 13 meses y ciclo lunar real con presión combinada, visión macro del zodiaco y estadística de BTC.",
+  "lang": "es-MX",
+  "id": "./",
+  "start_url": "./Trading_13lunar.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0c1117",
+  "theme_color": "#0c1117",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
