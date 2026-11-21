@@ -412,11 +412,13 @@
 
     <div class="nav-controls">
         <div class="selector-group">
+            <label>🧭 Vista:</label>
+            <select id="vistaSelector"></select>
             <label>🗓️ Año:</label>
             <select id="anioSelector"></select>
-            <label>🌕 Mes Lunar:</label>
+            <label>🌕 Mes:</label>
             <select id="mesSelector"></select>
-            <label>📅 Día (1-28):</label>
+            <label>📅 Día:</label>
             <select id="diaSelector"></select>
             <button id="irBtn">Ir al día ▶</button>
         </div>
@@ -494,32 +496,31 @@
     <!-- Estadística histórica de BTC por fase -->
     <div id="statsBTC" class="month-view"></div>
     <div class="footer">
-        🌕 Reglas Gann adaptadas | Fases lunares reales 2026–2027 | Los meses empiezan en jueves en 2026 y en viernes en 2027 | 13 meses de 28 días + día fuera del tiempo
+        🌕 Reglas Gann adaptadas | Fases lunares reales (Meeus) 2026–2027 | Vista 13 meses: 13 × 28 días + día fuera del tiempo | Vista ciclo lunar real: de luna nueva a luna nueva
     </div>
 </div>
 
 <script>
-    // ------------------------------------------------------------
-    // 1. CALENDARIO 13 MESES × 28 DÍAS (364 días) + DÍA FUERA DEL TIEMPO
-    //    Todas las fechas se manejan en UTC al mediodía para que no se
-    //    recorran de día según la zona horaria del navegador.
-    // ------------------------------------------------------------
+    // ============================================================
+    // 0. CONSTANTES Y UTILIDADES DE FECHA
+    //    Las fechas se manejan como "YYYY-MM-DD" y se interpretan en UTC al
+    //    mediodía, para que no se recorran según la zona horaria del navegador.
+    // ============================================================
     const mesesNombres = [
         "Mes 1 · Luna Nevada", "Mes 2 · Luna Helada", "Mes 3 · Luna Lluvias", "Mes 4 · Luna Floración",
         "Mes 5 · Luna Brillo", "Mes 6 · Luna Serena", "Mes 7 · Luna Cosecha", "Mes 8 · Luna Espejismo",
         "Mes 9 · Luna Silvestre", "Mes 10 · Luna Ancestral", "Mes 11 · Luna Eterna", "Mes 12 · Luna Cristal",
         "Mes 13 · Luna Sueño"
     ];
+    const MESES_CORTOS = ["ene","feb","mar","abr","may","jun","jul","ago","sep","oct","nov","dic"];
     const DIAS_SEMANA = ["Domingo","Lunes","Martes","Miércoles","Jueves","Viernes","Sábado"];
     const MS_DIA = 86400000;
-    const CICLO_LUNAR = 29.53058867;
-    // Luna nueva de referencia: 18 ene 2026, 19:52 UTC
-    const REF_LUNA_NUEVA = Date.UTC(2026, 0, 18, 19, 52, 0);
+    const OFFSET_MX = 6 * 3600 * 1000;   // centro de México, UTC-6 (sin horario de verano)
 
     // Años disponibles (no bisiestos: 13×28 + 1 = 365 días)
     const ANIOS = [2026, 2027];
 
-    // Equinoccios y solsticios (fecha en hora del centro de México, UTC-6)
+    // Equinoccios y solsticios (fecha en hora del centro de México)
     const eventosAstro = {
         "2026-03-20": "🌱 Equinoccio Primavera",
         "2026-06-21": "☀️ Solsticio Verano",
@@ -537,6 +538,11 @@
     };
 
     function fechaUTC(iso) { return new Date(iso + "T12:00:00Z"); }
+    function isoMX(ms) { return new Date(ms - OFFSET_MX).toISOString().slice(0, 10); }
+    function difDias(a, b) { return Math.round((fechaUTC(b) - fechaUTC(a)) / MS_DIA); }   // b − a
+    function sumarDias(iso, n) { return new Date(fechaUTC(iso).getTime() + n * MS_DIA).toISOString().slice(0, 10); }
+    function fechaCorta(iso) { return `${+iso.slice(8)} ${MESES_CORTOS[+iso.slice(5, 7) - 1]}`; }
+    function esBisiesto(a) { return (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0; }
 
     function isoLocalHoy() {
         const h = new Date();
@@ -544,33 +550,95 @@
         return `${h.getFullYear()}-${p(h.getMonth() + 1)}-${p(h.getDate())}`;
     }
 
-    function getMoonAge(date) {
-        const dias = (date.getTime() - REF_LUNA_NUEVA) / MS_DIA;
-        return ((dias % CICLO_LUNAR) + CICLO_LUNAR) % CICLO_LUNAR;
+    // Fecha gregoriana de un día del calendario de 13 meses, en cualquier año.
+    // En años bisiestos se omite el 29 de febrero (como en el calendario de 13 lunas).
+    function isoDeLunar(anio, mes, dia) {
+        const idx = (mes - 1) * 28 + (dia - 1);
+        let t = Date.UTC(anio, 0, 1, 12) + idx * MS_DIA;
+        if (esBisiesto(anio) && t >= Date.UTC(anio, 1, 29, 12)) t += MS_DIA;
+        return new Date(t).toISOString().slice(0, 10);
     }
 
-    // Fase lunar aproximada + si la Luna Llena está a ±2 días
-    function getMoonPhase(date) {
-        const edad = getMoonAge(date);
-        const lunaLlenaCerca = Math.abs(edad - CICLO_LUNAR / 2) <= 2;
-        let r;
-        if (edad < 1.0) r = { fase: "🌑 Luna Nueva", tipo: "new" };
-        else if (edad < 6.4) r = { fase: "🌒 Luna Creciente", tipo: "waxing_crescent" };
-        else if (edad < 8.5) r = { fase: "🌓 Cuarto Creciente", tipo: "first_quarter" };
-        else if (edad < 13.6) r = { fase: "🌔 Gibosa Creciente", tipo: "waxing_gibbous" };
-        else if (edad < 15.6) r = { fase: "🌕 Luna Llena", tipo: "full" };
-        else if (edad < 20.7) r = { fase: "🌖 Gibosa Menguante", tipo: "waning_gibbous" };
-        else if (edad < 22.7) r = { fase: "🌗 Cuarto Menguante", tipo: "last_quarter" };
-        else if (edad < 27.8) r = { fase: "🌘 Luna Menguante", tipo: "waning_crescent" };
-        else r = { fase: "🌑 Luna Nueva", tipo: "new" };
-        return { ...r, edad, lunaLlenaCerca };
+    // ============================================================
+    // 1. FASES LUNARES REALES (Jean Meeus, "Astronomical Algorithms", cap. 49)
+    //    k entero = luna nueva; +0.25 cuarto creciente; +0.5 llena; +0.75 cuarto menguante.
+    //    Precisión de minutos: suficiente para saber el día exacto de cada fase.
+    // ============================================================
+    function momentoFase(k) {
+        const r = Math.PI / 180, s = Math.sin, c = Math.cos;
+        const T = k / 1236.85, T2 = T * T, T3 = T2 * T, T4 = T3 * T;
+        let jde = 2451550.09766 + 29.530588861 * k + 0.00015437 * T2 - 0.00000015 * T3 + 0.00000000073 * T4;
+        const E  = 1 - 0.002516 * T - 0.0000074 * T2;
+        const M  = (2.5534 + 29.1053567 * k - 0.0000014 * T2 - 0.00000011 * T3) * r;
+        const Mp = (201.5643 + 385.81693528 * k + 0.0107582 * T2 + 0.00001238 * T3 - 0.000000058 * T4) * r;
+        const F  = (160.7108 + 390.67050284 * k - 0.0016118 * T2 - 0.00000227 * T3 + 0.000000011 * T4) * r;
+        const Om = (124.7746 - 1.56375588 * k + 0.0020672 * T2 + 0.00000215 * T3) * r;
+        const frac = ((k % 1) + 1) % 1;
+        let corr;
+        if (frac < 0.01 || frac > 0.99) {          // luna nueva
+            corr = -0.40720 * s(Mp) + 0.17241 * E * s(M) + 0.01608 * s(2 * Mp) + 0.01039 * s(2 * F)
+                 + 0.00739 * E * s(Mp - M) - 0.00514 * E * s(Mp + M) + 0.00208 * E * E * s(2 * M)
+                 - 0.00111 * s(Mp - 2 * F) - 0.00057 * s(Mp + 2 * F) + 0.00056 * E * s(2 * Mp + M)
+                 - 0.00042 * s(3 * Mp) + 0.00042 * E * s(M + 2 * F) + 0.00038 * E * s(M - 2 * F)
+                 - 0.00024 * E * s(2 * Mp - M) - 0.00017 * s(Om);
+        } else if (Math.abs(frac - 0.5) < 0.01) {  // luna llena
+            corr = -0.40614 * s(Mp) + 0.17302 * E * s(M) + 0.01614 * s(2 * Mp) + 0.01043 * s(2 * F)
+                 + 0.00734 * E * s(Mp - M) - 0.00515 * E * s(Mp + M) + 0.00209 * E * E * s(2 * M)
+                 - 0.00111 * s(Mp - 2 * F) - 0.00057 * s(Mp + 2 * F) + 0.00056 * E * s(2 * Mp + M)
+                 - 0.00042 * s(3 * Mp) + 0.00042 * E * s(M + 2 * F) + 0.00038 * E * s(M - 2 * F)
+                 - 0.00024 * E * s(2 * Mp - M) - 0.00017 * s(Om);
+        } else {                                   // cuartos
+            corr = -0.62801 * s(Mp) + 0.17172 * E * s(M) - 0.01183 * E * s(Mp + M) + 0.00862 * s(2 * Mp)
+                 + 0.00804 * s(2 * F) + 0.00454 * E * s(Mp - M) + 0.00204 * E * E * s(2 * M)
+                 - 0.00180 * s(Mp - 2 * F) - 0.00070 * s(Mp + 2 * F) - 0.00040 * s(3 * Mp)
+                 - 0.00034 * E * s(2 * Mp - M) + 0.00032 * E * s(M + 2 * F) + 0.00032 * E * s(M - 2 * F)
+                 - 0.00028 * E * E * s(Mp + 2 * M) + 0.00027 * E * s(2 * Mp + M) - 0.00017 * s(Om);
+            const W = 0.00306 - 0.00038 * E * c(M) + 0.00026 * c(Mp) - 0.00002 * c(Mp - M)
+                    + 0.00002 * c(Mp + M) + 0.00002 * c(2 * F);
+            corr += frac < 0.5 ? W : -W;
+        }
+        jde += corr;
+        return (jde - 2440587.5) * MS_DIA;         // milisegundos desde 1970 (UTC)
+    }
+
+    // Todas las lunaciones de 2018 a 2028 (fechas en hora del centro de México)
+    const lunaciones = [];
+    for (let k = Math.floor((2017.9 - 2000) * 12.3685); k <= Math.ceil((2028.2 - 2000) * 12.3685); k++) {
+        lunaciones.push({
+            dN: isoMX(momentoFase(k)),          // luna nueva
+            dC: isoMX(momentoFase(k + 0.25)),   // cuarto creciente
+            dL: isoMX(momentoFase(k + 0.5)),    // luna llena
+            dM: isoMX(momentoFase(k + 0.75)),   // cuarto menguante
+            dSig: isoMX(momentoFase(k + 1))     // siguiente luna nueva
+        });
+    }
+
+    function lunacionDe(iso) {
+        return lunaciones.find(L => L.dN <= iso && iso < L.dSig) || null;
+    }
+
+    // Fase lunar real de un día + fase semanal equivalente en el ciclo lunar real
+    function getLuna(iso) {
+        const L = lunacionDe(iso);
+        if (!L) return { fase: "—", tipo: "", lunaLlenaCerca: false, faseReal: "" };
+        let fase, tipo;
+        if (iso === L.dN)      { fase = "🌑 Luna Nueva";        tipo = "new"; }
+        else if (iso < L.dC)   { fase = "🌒 Luna Creciente";    tipo = "waxing_crescent"; }
+        else if (iso === L.dC) { fase = "🌓 Cuarto Creciente";  tipo = "first_quarter"; }
+        else if (iso < L.dL)   { fase = "🌔 Gibosa Creciente";  tipo = "waxing_gibbous"; }
+        else if (iso === L.dL) { fase = "🌕 Luna Llena";        tipo = "full"; }
+        else if (iso < L.dM)   { fase = "🌖 Gibosa Menguante";  tipo = "waning_gibbous"; }
+        else if (iso === L.dM) { fase = "🌗 Cuarto Menguante";  tipo = "last_quarter"; }
+        else                   { fase = "🌘 Luna Menguante";    tipo = "waning_crescent"; }
+        const faseReal = iso < L.dC ? "🌱 Iniciación" : iso < L.dL ? "📈 Crecimiento"
+                       : iso < L.dM ? "⚖️ Maduración" : "🍂 Cosecha/Cierre";
+        return { fase, tipo, faseReal, lunaLlenaCerca: Math.abs(difDias(iso, L.dL)) <= 2 };
     }
 
     // Evento astrológico a ±3 días (sin contar el día exacto)
     function getEventoCercano(iso) {
-        const t = fechaUTC(iso).getTime();
         for (const [f, nombre] of Object.entries(eventosAstro)) {
-            const diff = Math.round((fechaUTC(f).getTime() - t) / MS_DIA);
+            const diff = difDias(iso, f);
             if (diff !== 0 && Math.abs(diff) <= 3) {
                 const n = Math.abs(diff);
                 return diff > 0 ? `${nombre} en ${n} día${n > 1 ? "s" : ""}`
@@ -580,52 +648,96 @@
         return "";
     }
 
-    function crearDia(fecha, lunarMonth, lunarDay, faseSemanal, alerta, eventoFijo) {
-        const iso = fecha.toISOString().split("T")[0];
-        const moon = getMoonPhase(fecha);
-        const wd = fecha.getUTCDay();
+    function crearDia(iso, anio, lunarMonth, lunarDay, faseSemanal, alerta, ultimoDia, eventoFijo) {
+        const luna = getLuna(iso);
+        const wd = fechaUTC(iso).getUTCDay();
         return {
-            lunarMonth, lunarDay, gregorio: iso, weekdayIdx: wd, weekday: DIAS_SEMANA[wd],
+            anio, lunarMonth, lunarDay, ultimoDia, gregorio: iso, weekdayIdx: wd, weekday: DIAS_SEMANA[wd],
             faseSemanal, alerta,
             evento: eventoFijo || eventosAstro[iso] || "",
             eventoCercano: getEventoCercano(iso),
-            moonPhase: moon.fase, moonType: moon.tipo, lunaLlenaCerca: moon.lunaLlenaCerca
+            moonPhase: luna.fase, moonType: luna.tipo, lunaLlenaCerca: luna.lunaLlenaCerca
         };
     }
 
-    // Cada año: 13 meses de 28 días desde el 1 de enero + Día Fuera del Tiempo el 31 de diciembre
-    const calendario = [];
+    const alertaDe = d => (d === 10 || d === 17) ? "🔁 Revisión Estratégica" : "";
+
+    // ============================================================
+    // 2. LOS DOS CALENDARIOS
+    // ============================================================
+
+    // 2a. Vista "13 meses": 13 × 28 días desde el 1 de enero + Día Fuera del Tiempo (31 dic)
+    const calendario13 = [];
     for (const anio of ANIOS) {
-        const cursor = new Date(Date.UTC(anio, 0, 1, 12));
         for (let m = 1; m <= 13; m++) {
             for (let d = 1; d <= 28; d++) {
-                const faseSemanal = d <= 7 ? "🌱 Iniciación" : d <= 14 ? "📈 Crecimiento"
-                                  : d <= 21 ? "⚖️ Maduración" : "🍂 Cosecha/Cierre";
-                const alerta = (d === 10 || d === 17) ? "🔁 Revisión Estratégica" : "";
-                const dia = crearDia(new Date(cursor), m, d, faseSemanal, alerta);
-                dia.anio = anio;
-                calendario.push(dia);
-                cursor.setUTCDate(cursor.getUTCDate() + 1);
+                const fase = d <= 7 ? "🌱 Iniciación" : d <= 14 ? "📈 Crecimiento"
+                           : d <= 21 ? "⚖️ Maduración" : "🍂 Cosecha/Cierre";
+                calendario13.push(crearDia(isoDeLunar(anio, m, d), anio, m, d, fase, alertaDe(d), d === 28));
             }
         }
-        const diaExtra = crearDia(new Date(Date.UTC(anio, 11, 31, 12)), "Cierre", 1,
-            "🔄 RESETEO", "Balance Final", "🕯️ Día Fuera del Tiempo · Cierre anual");
-        diaExtra.moonType = "reset";
-        diaExtra.anio = anio;
-        calendario.push(diaExtra);
+        const cierre = crearDia(`${anio}-12-31`, anio, "Cierre", 1, "🔄 RESETEO", "Balance Final", false,
+            "🕯️ Día Fuera del Tiempo · Cierre anual");
+        cierre.moonType = "reset";
+        calendario13.push(cierre);
     }
+
+    // 2b. Vista "Ciclo lunar real": cada mes va de una luna nueva a la siguiente (29–30 días).
+    //     Iniciación 🌑→🌓 · Crecimiento 🌓→🌕 · Maduración 🌕→🌗 · Cosecha 🌗→🌑
+    const calendarioReal = [];
+    const mesesReales = {};   // anio -> [{ num, L, N, nombre, diaC, diaL, diaM }]
+    for (const anio of ANIOS) {
+        // Lunaciones que empiezan en el año; en el primer año también la que ya estaba en curso el 1 de enero
+        const ene1 = `${anio}-01-01`;
+        const ls = lunaciones.filter(L => +L.dN.slice(0, 4) === anio
+            || (anio === ANIOS[0] && L.dN < ene1 && L.dSig > ene1));
+        mesesReales[anio] = ls.map((L, i) => {
+            const num = i + 1, N = difDias(L.dN, L.dSig);
+            const etiqueta = +L.dN.slice(0, 4) === anio ? fechaCorta(L.dN) : `${fechaCorta(L.dN)} ${L.dN.slice(0, 4)}`;
+            for (let d = 1; d <= N; d++) {
+                const iso = sumarDias(L.dN, d - 1);
+                calendarioReal.push(crearDia(iso, anio, num, d, getLuna(iso).faseReal, alertaDe(d), d === N));
+            }
+            return {
+                num, L, N, nombre: `Lunación ${num} · 🌑 ${etiqueta}`,
+                diaC: difDias(L.dN, L.dC) + 1, diaL: difDias(L.dN, L.dL) + 1, diaM: difDias(L.dN, L.dM) + 1
+            };
+        });
+    }
+
+    // Estado de la vista
+    let vista = "13";             // "13" | "real"
     let anioActual = ANIOS[0];
+    let diaSeleccionado = null;
+
+    const cal = () => vista === "13" ? calendario13 : calendarioReal;
+    const numMeses = () => vista === "13" ? 13 : mesesReales[anioActual].length;
+
+    // Datos de forma de cada mes para el título y la gráfica
+    function infoMes(month) {
+        if (vista === "13") {
+            return {
+                N: 28, nombre: mesesNombres[month - 1], picoA: 14, picoB: 15,
+                divisores: [7.5, 14.5, 21.5], etiquetas: [1, 7, 14, 21, 28],
+                titulo: "📈 Ciclo de 28 días: sube 1–14 · baja 15–28"
+            };
+        }
+        const R = mesesReales[anioActual][month - 1];
+        return {
+            N: R.N, nombre: R.nombre, picoA: R.diaL, picoB: R.diaL,
+            divisores: [R.diaC - 0.5, R.diaL - 0.5, R.diaM - 0.5],
+            etiquetas: [1, R.diaC, R.diaL, R.diaM, R.N],
+            titulo: `📈 Ciclo lunar real: sube 🌑→🌕 (días 1–${R.diaL}) · baja 🌕→🌑 (${R.diaL}–${R.N})`
+        };
+    }
 
     function getDiaByLunar(month, day) {
-        if (month >= 1 && month <= 13) {
-            return calendario.find(d => d.anio === anioActual && d.lunarMonth === month && d.lunarDay === day);
-        }
-        return null;
+        return cal().find(d => d.anio === anioActual && d.lunarMonth === month && d.lunarDay === day) || null;
     }
 
-    // ------------------------------------------------------------
-    // 2. REGLAS DE DECISIÓN (alineadas con la guía de 5 puntos)
-    // ------------------------------------------------------------
+    // ============================================================
+    // 3. REGLAS DE DECISIÓN (alineadas con la guía de 5 puntos)
+    // ============================================================
     function getTradingDecision(dia) {
         if (!dia) return { recomendacion: "Día inválido", riesgo: "Neutro", color: "info" };
         const fase = dia.faseSemanal;
@@ -663,8 +775,8 @@
             color = "roja";
             if (llena) recomendacion = "🌀 LUNA LLENA (±2 días) EN COSECHA: cierre total, pasar a stablecoins.";
             else recomendacion = "💰 TOMAR GANANCIAS · Cerrar posiciones especulativas. Solo capital estable.";
-            if (dia.lunarDay === 28 && !recomendacion.includes("stablecoins")) {
-                recomendacion += " · 📴 Día 28: pasar a stablecoins hasta el día 1 del siguiente mes.";
+            if (dia.ultimoDia && !recomendacion.includes("stablecoins")) {
+                recomendacion += " · 📴 Último día del mes: pasar a stablecoins hasta el día 1 del siguiente mes.";
             }
         }
         else if (fase.includes("RESETEO")) {
@@ -682,22 +794,27 @@
         return { recomendacion, riesgo, color };
     }
 
-    // ------------------------------------------------------------
-    // 3. RENDER
-    // ------------------------------------------------------------
+    // ============================================================
+    // 4. RENDER
+    // ============================================================
+    const fmtPct = v => { const r = Math.round(v * 10) / 10 || 0; return `${r > 0 ? "+" : ""}${r.toFixed(1)}%`; };
+
     function renderDiaPanel(diaData) {
         const panel = document.getElementById("decisionPanel");
         if (!diaData) {
             panel.innerHTML = `<div style="padding:1rem;">❌ Dato no encontrado</div>`;
             return;
         }
-        diaSeleccionado = typeof diaData.lunarDay === "number" && diaData.lunarMonth !== "Cierre"
-            ? diaData.lunarDay : null;
+        diaSeleccionado = diaData.lunarMonth !== "Cierre" ? diaData.lunarDay : null;
         const decision = getTradingDecision(diaData);
         const c = COLORES_RIESGO[decision.riesgo] || "#ffc107";
-        const titulo = diaData.lunarMonth === "Cierre"
-            ? `🕯️ ${diaData.anio} · Día Fuera del Tiempo`
-            : `${diaData.anio} · ${mesesNombres[diaData.lunarMonth - 1]} · Día ${diaData.lunarDay}`;
+        let titulo;
+        if (diaData.lunarMonth === "Cierre") titulo = `🕯️ ${diaData.anio} · Día Fuera del Tiempo`;
+        else if (vista === "13") titulo = `${diaData.anio} · ${mesesNombres[diaData.lunarMonth - 1]} · Día ${diaData.lunarDay}`;
+        else {
+            const R = mesesReales[diaData.anio][diaData.lunarMonth - 1];
+            titulo = `${diaData.anio} · ${R.nombre} · Día ${diaData.lunarDay} de ${R.N}`;
+        }
         panel.innerHTML = `
             <div class="decision-header">
                 <div class="decision-title">📅 ${titulo} (${diaData.weekday})</div>
@@ -705,6 +822,7 @@
             </div>
             <div class="recomendacion">${decision.recomendacion}</div>
             <div class="info-grid">
+                <div class="info-item">🧭 Vista: ${vista === "13" ? "13 meses (28 días)" : "Ciclo lunar real"}</div>
                 <div class="info-item">🌙 Fase semanal: ${diaData.faseSemanal}</div>
                 <div class="info-item">🌓 Luna real: ${diaData.moonPhase}</div>
                 ${diaData.lunaLlenaCerca ? `<div class="info-item">🌕 Luna Llena a ±2 días</div>` : ''}
@@ -720,60 +838,59 @@
         renderDiaPanel(getDiaByLunar(month, day));
     }
 
-    let diaSeleccionado = null;
-
-    // Gráfica del ciclo: días 1-14 suben (verde), días 15-28 bajan (rojo)
-    function renderCicloChart(month) {
+    // Gráfica del ciclo: sube hasta el pico (verde) y baja después (rojo), con BTC real encima
+    function renderCicloChart(month, monthDays) {
+        const info = infoMes(month);
+        const { N, picoA, picoB } = info;
         const W = 300, H = 120, x0 = 14, x1 = W - 14, yBase = 95, yTop = 18;
-        const x = d => x0 + (d - 1) * (x1 - x0) / 27;
-        const y = d => d <= 14
-            ? yBase - (d - 1) * (yBase - yTop) / 13
-            : yTop + (d - 15) * (yBase - yTop) / 13;
-        const puntos = d0 => Array.from({ length: 14 }, (_, i) => `${x(d0 + i).toFixed(1)},${y(d0 + i).toFixed(1)}`).join(" ");
+        const x = d => x0 + (d - 1) * (x1 - x0) / (N - 1);
+        const y = d => d <= picoA ? yBase - (d - 1) * (yBase - yTop) / (picoA - 1)
+                     : d >= picoB ? yTop + (d - picoB) * (yBase - yTop) / (N - picoB)
+                     : yTop;
+        const puntos = (a, b) => Array.from({ length: b - a + 1 }, (_, i) => `${x(a + i).toFixed(1)},${y(a + i).toFixed(1)}`).join(" ");
 
         let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
-        // Línea base azul
         svg += `<line x1="${x0}" y1="${yBase}" x2="${x1}" y2="${yBase}" stroke="#3d7bff" stroke-width="2"/>`;
-        // Divisores de semana
-        [7.5, 14.5, 21.5].forEach(d => {
+        info.divisores.forEach(d => {
             svg += `<line x1="${x(d)}" y1="${yTop - 6}" x2="${x(d)}" y2="${yBase}" stroke="#2a3a48" stroke-width="1" stroke-dasharray="2 3"/>`;
         });
-        // Subida y bajada
-        svg += `<polyline points="${puntos(1)}" fill="none" stroke="#4caf50" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
-        svg += `<line x1="${x(14)}" y1="${y(14)}" x2="${x(15)}" y2="${y(15)}" stroke="#ffd54a" stroke-width="3" stroke-linecap="round"/>`;
-        svg += `<polyline points="${puntos(15)}" fill="none" stroke="#f44336" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
-        // Etiquetas de días
-        [1, 7, 14, 21, 28].forEach(d => {
+        svg += `<polyline points="${puntos(1, picoA)}" fill="none" stroke="#4caf50" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+        if (picoB > picoA) {
+            svg += `<line x1="${x(picoA)}" y1="${yTop}" x2="${x(picoB)}" y2="${yTop}" stroke="#ffd54a" stroke-width="3" stroke-linecap="round"/>`;
+        } else {
+            svg += `<circle cx="${x(picoA)}" cy="${yTop}" r="3" fill="#ffd54a"/>`;
+        }
+        svg += `<polyline points="${puntos(picoB, N)}" fill="none" stroke="#f44336" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"/>`;
+        info.etiquetas.forEach(d => {
             svg += `<text x="${x(d)}" y="${H - 8}" fill="#9aaec0" font-size="9" text-anchor="middle">${d}</text>`;
         });
-        svg += `<text x="${x(7.5)}" y="${yTop - 8}" fill="#4caf50" font-size="9" text-anchor="middle">▲ Sube</text>`;
-        svg += `<text x="${x(21.5)}" y="${yTop - 8}" fill="#f44336" font-size="9" text-anchor="middle">▼ Baja</text>`;
-        // Día seleccionado
-        if (diaSeleccionado) {
+        svg += `<text x="${x((1 + picoA) / 2)}" y="${yTop - 8}" fill="#4caf50" font-size="9" text-anchor="middle">▲ Sube</text>`;
+        svg += `<text x="${x((picoB + N) / 2)}" y="${yTop - 8}" fill="#f44336" font-size="9" text-anchor="middle">▼ Baja</text>`;
+        if (diaSeleccionado && diaSeleccionado <= N) {
             const d = diaSeleccionado;
             svg += `<line x1="${x(d)}" y1="${y(d)}" x2="${x(d)}" y2="${yBase}" stroke="#ffd54a" stroke-width="1" stroke-dasharray="3 3"/>`;
             svg += `<circle cx="${x(d)}" cy="${y(d)}" r="5" fill="#ffd54a" stroke="#0c1117" stroke-width="2"/>`;
         }
 
-        // Precio real de BTC en este mes (cambio % contra el cierre previo al día 1)
-        let pie = "";
-        const serie = btcSerieMes(anioActual, month);
+        // BTC real: % de cambio contra el cierre del día anterior al día 1
+        let pie;
+        const serie = btcSerieFechas(monthDays.map(d => d.gregorio));
         if (serie) {
-            const vals = serie.filter(p => p.pct !== null).map(p => p.pct);
+            const conDato = serie.filter(p => p.pct !== null);
+            const vals = conDato.map(p => p.pct);
             const min = Math.min(0, ...vals), max = Math.max(0, ...vals);
             const rango = (max - min) || 1;
             const yp = v => yBase - (v - min) * (yBase - yTop) / rango;
-            const pts = serie.filter(p => p.pct !== null).map(p => `${x(p.dia).toFixed(1)},${yp(p.pct).toFixed(1)}`).join(" ");
+            const pts = conDato.map(p => `${x(p.dia).toFixed(1)},${yp(p.pct).toFixed(1)}`).join(" ");
             svg += `<line x1="${x0}" y1="${yp(0)}" x2="${x1}" y2="${yp(0)}" stroke="#f7931a" stroke-width="0.8" stroke-dasharray="1 3" opacity="0.6"/>`;
             svg += `<polyline points="${pts}" fill="none" stroke="#f7931a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
-            const ult = serie.filter(p => p.pct !== null).pop();
+            const ult = conDato[conDato.length - 1];
             svg += `<circle cx="${x(ult.dia)}" cy="${yp(ult.pct)}" r="3" fill="#f7931a"/>`;
-            const fmt = v => { const r = Math.round(v * 10) / 10 || 0; return `${r > 0 ? "+" : ""}${r.toFixed(1)}%`; };
-            const color = ult.pct >= 0 ? "#4caf50" : "#f44336";
+            const color = Math.round(ult.pct * 10) === 0 ? "#cbdbe6" : ult.pct > 0 ? "#4caf50" : "#f44336";
             pie = `<div class="ciclo-chart-legend">
                      <span><i style="background:#4caf50"></i><i style="background:#f44336"></i> Teórico</span>
-                     <span><i style="background:#f7931a"></i> BTC real: <b style="color:${color}">${fmt(ult.pct)}</b> al día ${ult.dia}</span>
-                     <span style="opacity:0.7">máx ${fmt(max)} · mín ${fmt(min)}</span>
+                     <span><i style="background:#f7931a"></i> BTC real: <b style="color:${color}">${fmtPct(ult.pct)}</b> al día ${ult.dia}</span>
+                     <span style="opacity:0.7">máx ${fmtPct(max)} · mín ${fmtPct(min)}</span>
                    </div>`;
         } else {
             pie = `<div class="ciclo-chart-legend" style="opacity:0.7">${btcEstado === "cargando"
@@ -781,15 +898,16 @@
                 ? "⚠️ No se pudo descargar el precio de BTC." : "BTC: sin datos para este mes todavía."}</div>`;
         }
         svg += `</svg>`;
-        return `<div class="ciclo-chart"><div class="ciclo-chart-title">📈 Ciclo de 28 días: sube 1–14 · baja 15–28</div>${svg}${pie}</div>`;
+        return `<div class="ciclo-chart"><div class="ciclo-chart-title">${info.titulo}</div>${svg}${pie}</div>`;
     }
 
     function renderMonthView(month) {
-        const monthDays = calendario.filter(d => d.anio === anioActual && d.lunarMonth === month);
-        monthDays.sort((a, b) => a.lunarDay - b.lunarDay);
+        const info = infoMes(month);
+        const monthDays = cal().filter(d => d.anio === anioActual && d.lunarMonth === month)
+                               .sort((a, b) => a.lunarDay - b.lunarDay);
         const container = document.getElementById("monthlyView");
         const semanaHeaders = ["D","L","M","M","J","V","S"];
-        let html = `<div style="display:flex; justify-content:space-between;"><div class="month-title">📆 ${anioActual} · ${mesesNombres[month-1]} · 28 días</div><div style="font-size:0.7rem;">🌙 Clic en día para consultar</div></div>`;
+        let html = `<div style="display:flex; justify-content:space-between;"><div class="month-title">📆 ${anioActual} · ${info.nombre} · ${info.N} días</div><div style="font-size:0.7rem;">🌙 Clic en día para consultar</div></div>`;
         html += `<div class="calendar-grid">`;
         semanaHeaders.forEach(h => html += `<div class="weekday-label">${h}</div>`);
 
@@ -799,10 +917,7 @@
 
         for (const dia of monthDays) {
             const decision = getTradingDecision(dia);
-            let bgColor;
-            if (decision.color === "verde") bgColor = "#1f4930";
-            else if (decision.color === "roja") bgColor = "#5e2a2a";
-            else bgColor = "#1e3a47";
+            const bgColor = decision.color === "verde" ? "#1f4930" : decision.color === "roja" ? "#5e2a2a" : "#1e3a47";
             const moonEmoji = dia.moonPhase.split(" ")[0];
             html += `<div class="day-cell" style="background:${bgColor};" onclick="selectDay(${month}, ${dia.lunarDay})">
                         <div><strong>${dia.lunarDay}</strong></div>
@@ -810,16 +925,13 @@
                         <div class="fase-sema">${dia.faseSemanal.substring(0,2)}</div>
                     </div>`;
         }
-        // En el mes 13, el día siguiente al 28 es el Día Fuera del Tiempo (31 dic)
-        if (month === 13) {
-            const cierre = calendario.find(d => d.anio === anioActual && d.lunarMonth === "Cierre");
-            if (cierre) {
-                html += `<div class="day-cell" style="background:#2b2f3a;" onclick="selectCierre()">
-                            <div><strong>31 dic</strong></div>
-                            <div class="luna-icon">🕯️</div>
-                            <div class="fase-sema">Fuera</div>
-                        </div>`;
-            }
+        // En la vista de 13 meses, el día siguiente al 28 del Mes 13 es el Día Fuera del Tiempo (31 dic)
+        if (vista === "13" && month === 13) {
+            html += `<div class="day-cell" style="background:#2b2f3a;" onclick="selectCierre()">
+                        <div><strong>31 dic</strong></div>
+                        <div class="luna-icon">🕯️</div>
+                        <div class="fase-sema">Fuera</div>
+                    </div>`;
         }
         // Diagonal amarilla punteada de esquina superior izquierda a inferior derecha
         html += `<svg class="diagonal-overlay" viewBox="0 0 100 100" preserveAspectRatio="none">
@@ -827,210 +939,220 @@
                           stroke-dasharray="6 5" vector-effect="non-scaling-stroke"/>
                  </svg>`;
         html += `</div>`;
-        html += renderCicloChart(month);
+        html += renderCicloChart(month, monthDays);
         container.innerHTML = html;
     }
 
-    function llenarDias(diaSelect) {
-        diaSelect.innerHTML = "";
-        for (let d = 1; d <= 28; d++) {
+    // ============================================================
+    // 5. NAVEGACIÓN
+    // ============================================================
+    const $ = id => document.getElementById(id);
+
+    function llenarOpciones(select, opciones) {
+        select.innerHTML = "";
+        for (const [valor, texto] of opciones) {
             const opt = document.createElement("option");
-            opt.value = d;
-            opt.textContent = `Día ${d}`;
-            diaSelect.appendChild(opt);
+            opt.value = valor;
+            opt.textContent = texto;
+            select.appendChild(opt);
         }
+    }
+
+    function llenarMeses() {
+        const ops = [];
+        for (let m = 1; m <= numMeses(); m++) ops.push([m, infoMes(m).nombre]);
+        llenarOpciones($("mesSelector"), ops);
+    }
+
+    function llenarDias(n) {
+        const ops = [];
+        for (let d = 1; d <= n; d++) ops.push([d, `Día ${d}`]);
+        llenarOpciones($("diaSelector"), ops);
     }
 
     function setAnio(anio) {
         anioActual = anio;
-        document.getElementById("anioSelector").value = anio;
+        $("anioSelector").value = anio;
     }
 
-    window.selectCierre = function() {
-        document.getElementById("mesSelector").value = 13;
-        renderDiaPanel(calendario.find(d => d.anio === anioActual && d.lunarMonth === "Cierre"));
-        renderMonthView(13);
-    };
+    // Muestra un mes/día de la vista actual (ajusta el mes y el día si se salen del rango)
+    function mostrar(month, day) {
+        month = Math.min(Math.max(1, month), numMeses());
+        const N = infoMes(month).N;
+        day = Math.min(Math.max(1, day), N);
+        llenarMeses();
+        $("mesSelector").value = month;
+        llenarDias(N);
+        $("diaSelector").value = day;
+        renderDecisionPanel(month, day);
+        renderMonthView(month);
+    }
 
     window.selectDay = function(month, day, anio) {
         if (anio) setAnio(anio);
-        document.getElementById("mesSelector").value = month;
-        const diaSelect = document.getElementById("diaSelector");
-        llenarDias(diaSelect);
-        diaSelect.value = day;
-        renderDecisionPanel(month, day);
-        renderMonthView(month);
+        mostrar(month, day);
+    };
+
+    window.selectCierre = function() {
+        llenarMeses();
+        $("mesSelector").value = 13;
+        renderDiaPanel(calendario13.find(d => d.anio === anioActual && d.lunarMonth === "Cierre"));
+        renderMonthView(13);
     };
 
     function irAHoy() {
         const hoyIso = isoLocalHoy();
-        const hoyData = calendario.find(d => d.gregorio === hoyIso);
+        const hoyData = cal().find(d => d.gregorio === hoyIso);
         if (!hoyData) {
-            document.getElementById("decisionPanel").innerHTML =
+            $("decisionPanel").innerHTML =
                 `<div style="padding:1rem;">📅 Hoy (${hoyIso}) está fuera del calendario (${ANIOS[0]}–${ANIOS[ANIOS.length - 1]}).</div>`;
             return false;
         }
         setAnio(hoyData.anio);
-        if (hoyData.lunarMonth === "Cierre") {
-            selectCierre();
-            return true;
-        }
-        selectDay(hoyData.lunarMonth, hoyData.lunarDay);
+        if (hoyData.lunarMonth === "Cierre") selectCierre();
+        else mostrar(hoyData.lunarMonth, hoyData.lunarDay);
         return true;
     }
 
     function populateSelectors() {
-        const anioSelect = document.getElementById("anioSelector");
-        const mesSelect = document.getElementById("mesSelector");
-        const diaSelect = document.getElementById("diaSelector");
-        anioSelect.innerHTML = "";
-        for (const a of ANIOS) {
-            const option = document.createElement("option");
-            option.value = a;
-            option.textContent = a;
-            anioSelect.appendChild(option);
-        }
-        anioSelect.addEventListener("change", () => {
-            anioActual = parseInt(anioSelect.value);
-            const mes = parseInt(mesSelect.value);
-            renderMonthView(mes);
-            renderDecisionPanel(mes, parseInt(diaSelect.value));
-        });
-        mesSelect.innerHTML = "";
-        for (let i = 1; i <= 13; i++) {
-            const option = document.createElement("option");
-            option.value = i;
-            option.textContent = mesesNombres[i-1];
-            mesSelect.appendChild(option);
-        }
-        llenarDias(diaSelect);
+        llenarOpciones($("vistaSelector"), [["13", "13 meses (28 días)"], ["real", "Ciclo lunar real"]]);
+        llenarOpciones($("anioSelector"), ANIOS.map(a => [a, a]));
+        const mesActual = () => parseInt($("mesSelector").value) || 1;
+        const diaActual = () => parseInt($("diaSelector").value) || 1;
 
-        mesSelect.addEventListener("change", () => {
-            const mes = parseInt(mesSelect.value);
-            renderMonthView(mes);
-            renderDecisionPanel(mes, parseInt(diaSelect.value));
+        $("vistaSelector").addEventListener("change", () => {
+            vista = $("vistaSelector").value;
+            if (!irAHoy()) selectDay(1, 1, ANIOS[0]);
+            renderStatsBTC();
         });
-        diaSelect.addEventListener("change", () => {
-            const mes = parseInt(mesSelect.value);
-            renderDecisionPanel(mes, parseInt(diaSelect.value));
-            renderMonthView(mes);
+        $("anioSelector").addEventListener("change", () => {
+            anioActual = parseInt($("anioSelector").value);
+            mostrar(mesActual(), diaActual());
         });
-        document.getElementById("irBtn").addEventListener("click", () => {
-            const mes = parseInt(mesSelect.value);
-            renderDecisionPanel(mes, parseInt(diaSelect.value));
-            renderMonthView(mes);
-        });
-        document.getElementById("hoyBtn").addEventListener("click", irAHoy);
+        $("mesSelector").addEventListener("change", () => mostrar(mesActual(), diaActual()));
+        $("diaSelector").addEventListener("change", () => mostrar(mesActual(), diaActual()));
+        $("irBtn").addEventListener("click", () => mostrar(mesActual(), diaActual()));
+        $("hoyBtn").addEventListener("click", irAHoy);
 
         // Al abrir, mostrar hoy si cae en un año disponible; si no, Mes 1 Día 1 del primer año
         if (!irAHoy()) selectDay(1, 1, ANIOS[0]);
     }
 
-    // ------------------------------------------------------------
-    // 4. PRECIO DE BTC (se descarga en el navegador) Y ESTADÍSTICA POR FASE
-    // ------------------------------------------------------------
+    // ============================================================
+    // 6. PRECIO DE BTC (se descarga en el navegador) Y ESTADÍSTICA POR FASE
+    // ============================================================
     let btcPrecios = null;      // Map "YYYY-MM-DD" -> cierre diario (UTC)
     let btcEstado = "cargando"; // "cargando" | "ok" | "error"
     let btcFuente = "";
 
-    function esBisiesto(a) { return (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0; }
-
-    // Fecha gregoriana de un día lunar en cualquier año.
-    // En años bisiestos se omite el 29 de febrero (como en el calendario de 13 lunas).
-    function isoDeLunar(anio, mes, dia) {
-        const idx = (mes - 1) * 28 + (dia - 1);
-        let t = Date.UTC(anio, 0, 1, 12) + idx * MS_DIA;
-        if (esBisiesto(anio) && t >= Date.UTC(anio, 1, 29, 12)) t += MS_DIA;
-        return new Date(t).toISOString().slice(0, 10);
-    }
-
-    function isoMenos1(iso) {
-        return new Date(fechaUTC(iso).getTime() - MS_DIA).toISOString().slice(0, 10);
-    }
-
-    // % de cambio de BTC en cada día del mes lunar, contra el cierre del día anterior al día 1
-    function btcSerieMes(anio, mes) {
-        if (!btcPrecios) return null;
-        const d1 = isoDeLunar(anio, mes, 1);
-        const base = btcPrecios.get(isoMenos1(d1)) ?? btcPrecios.get(d1);
+    // % de cambio de BTC en cada día de una lista de fechas, contra el cierre del día anterior a la primera
+    function btcSerieFechas(isos) {
+        if (!btcPrecios || !isos.length) return null;
+        const base = btcPrecios.get(sumarDias(isos[0], -1)) ?? btcPrecios.get(isos[0]);
         if (base == null) return null;
-        const serie = [];
-        for (let d = 1; d <= 28; d++) {
-            const p = btcPrecios.get(isoDeLunar(anio, mes, d));
-            serie.push({ dia: d, pct: p != null ? (p / base - 1) * 100 : null });
-        }
+        const serie = isos.map((iso, i) => {
+            const p = btcPrecios.get(iso);
+            return { dia: i + 1, pct: p != null ? (p / base - 1) * 100 : null };
+        });
         return serie.some(p => p.pct !== null) ? serie : null;
     }
 
     const VENTANAS = [
-        { nombre: "🌱 Iniciación", rango: "1–7",   a: 1,  b: 7 },
-        { nombre: "📈 Crecimiento", rango: "8–14", a: 8,  b: 14 },
-        { nombre: "⚖️ Maduración", rango: "15–21", a: 15, b: 21 },
-        { nombre: "🍂 Cosecha",    rango: "22–28", a: 22, b: 28 },
-        { nombre: "⬆️ 1ª mitad",   rango: "1–14",  a: 1,  b: 14, sep: true },
-        { nombre: "⬇️ 2ª mitad",   rango: "15–28", a: 15, b: 28 }
+        { key: "ini", nombre: "🌱 Iniciación",  r13: "días 1–7",   rReal: "🌑 → 🌓" },
+        { key: "cre", nombre: "📈 Crecimiento", r13: "días 8–14",  rReal: "🌓 → 🌕" },
+        { key: "mad", nombre: "⚖️ Maduración",  r13: "días 15–21", rReal: "🌕 → 🌗" },
+        { key: "cos", nombre: "🍂 Cosecha",     r13: "días 22–28", rReal: "🌗 → 🌑" },
+        { key: "m1",  nombre: "⬆️ 1ª mitad",    r13: "días 1–14",  rReal: "🌑 → 🌕", sep: true },
+        { key: "m2",  nombre: "⬇️ 2ª mitad",    r13: "días 15–28", rReal: "🌕 → 🌑" }
     ];
 
-    // Para cada ventana: rendimiento de BTC en cada mes lunar completo del histórico
-    function calcularStats() {
-        const hoyIso = new Date().toISOString().slice(0, 10);
-        const anios = [...new Set([...btcPrecios.keys()].map(k => +k.slice(0, 4)))].sort();
-        let meses = 0;
-        const res = VENTANAS.map(v => {
-            const rs = [];
+    // Ventanas de cada mes del histórico según la vista: { ini: {ini, fin}, cre: ..., ... }
+    function periodosHistoricos(v) {
+        if (v === "13") {
+            const anios = [...new Set([...btcPrecios.keys()].map(k => +k.slice(0, 4)))].sort();
+            const out = [];
             for (const a of anios) for (let m = 1; m <= 13; m++) {
-                const ini = isoDeLunar(a, m, v.a), fin = isoDeLunar(a, m, v.b);
+                const f = d => isoDeLunar(a, m, d);
+                out.push({
+                    ini: { ini: f(1),  fin: f(7) },  cre: { ini: f(8),  fin: f(14) },
+                    mad: { ini: f(15), fin: f(21) }, cos: { ini: f(22), fin: f(28) },
+                    m1:  { ini: f(1),  fin: f(14) }, m2:  { ini: f(15), fin: f(28) }
+                });
+            }
+            return out;
+        }
+        const antes = iso => sumarDias(iso, -1);
+        return lunaciones.map(L => ({
+            ini: { ini: L.dN, fin: antes(L.dC) },  cre: { ini: L.dC, fin: antes(L.dL) },
+            mad: { ini: L.dL, fin: antes(L.dM) },  cos: { ini: L.dM, fin: antes(L.dSig) },
+            m1:  { ini: L.dN, fin: antes(L.dL) },  m2:  { ini: L.dL, fin: antes(L.dSig) }
+        }));
+    }
+
+    function calcularStats(v) {
+        const hoyIso = new Date().toISOString().slice(0, 10);
+        const periodos = periodosHistoricos(v);
+        let meses = 0;
+        const res = VENTANAS.map(w => {
+            const rs = [];
+            for (const p of periodos) {
+                const { ini, fin } = p[w.key];
                 if (fin >= hoyIso) continue;                 // solo ventanas ya terminadas
-                const p0 = btcPrecios.get(isoMenos1(ini)), p1 = btcPrecios.get(fin);
+                const p0 = btcPrecios.get(sumarDias(ini, -1)), p1 = btcPrecios.get(fin);
                 if (p0 == null || p1 == null) continue;
                 rs.push((p1 / p0 - 1) * 100);
             }
-            rs.sort((x, y) => x - y);
+            rs.sort((a, b) => a - b);
             const n = rs.length;
             const prom = n ? rs.reduce((s, x) => s + x, 0) / n : 0;
             const med = n ? (n % 2 ? rs[(n - 1) / 2] : (rs[n / 2 - 1] + rs[n / 2]) / 2) : 0;
             const pos = n ? rs.filter(x => x > 0).length / n * 100 : 0;
             meses = Math.max(meses, n);
-            return { ...v, n, prom, med, pos };
+            return { ...w, n, prom, med, pos };
         });
         return { res, meses };
     }
 
     function renderStatsBTC() {
-        const cont = document.getElementById("statsBTC");
+        const cont = $("statsBTC");
+        const nombreVista = vista === "13" ? "13 meses (28 días)" : "ciclo lunar real";
         if (btcEstado !== "ok") {
-            cont.innerHTML = `<div class="stats-title">📊 BTC por fase del mes lunar</div>
+            cont.innerHTML = `<div class="stats-title">📊 BTC por fase · ${nombreVista}</div>
                 <div class="stats-sub">${btcEstado === "cargando"
                     ? "⏳ Descargando historial de BTC..."
                     : "⚠️ No se pudo descargar el historial de BTC. Revisa tu conexión y recarga la página."}</div>`;
             return;
         }
-        const { res, meses } = calcularStats();
+        const { res, meses } = calcularStats(vista);
+        const otra = calcularStats(vista === "13" ? "real" : "13").res;
         const fechas = [...btcPrecios.keys()].sort();
-        const fmt = v => { const r = Math.round(v * 10) / 10 || 0; return `${r > 0 ? "+" : ""}${r.toFixed(1)}%`; };
         const col = v => Math.round(v * 10) === 0 ? "#cbdbe6" : v > 0 ? "#4caf50" : "#f44336";
         let filas = "";
         for (const r of res) {
             filas += `<tr class="${r.sep ? "sep" : ""}">
-                <td>${r.nombre}<br><span style="font-size:0.68rem;color:#9aaec0">días ${r.rango}</span></td>
-                <td style="color:${col(r.med)}">${fmt(r.med)}</td>
-                <td style="color:${col(r.prom)}">${fmt(r.prom)}</td>
+                <td>${r.nombre}<br><span style="font-size:0.68rem;color:#9aaec0">${vista === "13" ? r.r13 : r.rReal}</span></td>
+                <td style="color:${col(r.med)}">${fmtPct(r.med)}</td>
+                <td style="color:${col(r.prom)}">${fmtPct(r.prom)}</td>
                 <td>${r.pos.toFixed(0)}%<span class="stats-bar" style="width:${(r.pos * 0.4).toFixed(0)}px"></span></td>
             </tr>`;
         }
-        const m1 = res.find(r => r.a === 1 && r.b === 14), m2 = res.find(r => r.a === 15 && r.b === 28);
+        const m = k => res.find(r => r.key === k), o = k => otra.find(r => r.key === k);
+        const mitades = vista === "13" ? "la 1ª mitad (días 1–14) debería subir y la 2ª (días 15–28) bajar"
+                                       : "de luna nueva a llena debería subir y de llena a nueva bajar";
         cont.innerHTML = `
-            <div class="stats-title">📊 BTC por fase del mes lunar</div>
-            <div class="stats-sub">${btcFuente} · ${fechas[0]} a ${fechas[fechas.length - 1]} · ${meses} meses lunares completos</div>
+            <div class="stats-title">📊 BTC por fase · ${nombreVista}</div>
+            <div class="stats-sub">${btcFuente} · ${fechas[0]} a ${fechas[fechas.length - 1]} · ${meses} ${vista === "13" ? "meses de 28 días completos" : "lunaciones completas"}</div>
             <table class="stats-table">
                 <tr><th>Fase</th><th>Mediana</th><th>Promedio</th><th>% veces que sube</th></tr>
                 ${filas}
             </table>
             <div class="stats-nota">
-                🔎 Según la guía, la 1ª mitad debería subir y la 2ª bajar. En este histórico, BTC subió en la
-                1ª mitad el <b>${m1.pos.toFixed(0)}%</b> de las veces (mediana ${fmt(m1.med)}) y en la 2ª mitad
-                el <b>${m2.pos.toFixed(0)}%</b> (mediana ${fmt(m2.med)}). Un valor cercano a 50% significa que esa
-                fase se comporta como una moneda al aire.<br>
+                🔎 Según la guía, ${mitades}. En este histórico, BTC subió en la 1ª mitad el
+                <b>${m("m1").pos.toFixed(0)}%</b> de las veces (mediana ${fmtPct(m("m1").med)}) y en la 2ª mitad
+                el <b>${m("m2").pos.toFixed(0)}%</b> (mediana ${fmtPct(m("m2").med)}). Un valor cercano a 50% significa
+                que esa fase se comporta como una moneda al aire.<br>
+                🔁 En la otra vista (${vista === "13" ? "ciclo lunar real" : "13 meses"}): 1ª mitad sube el
+                ${o("m1").pos.toFixed(0)}% y 2ª mitad el ${o("m2").pos.toFixed(0)}%.<br>
                 La mediana pesa menos los meses extremos que el promedio. Datos pasados, solo como referencia.
             </div>`;
     }
@@ -1063,7 +1185,7 @@
     }
 
     function refrescarBTC() {
-        renderMonthView(parseInt(document.getElementById("mesSelector").value) || 1);
+        renderMonthView(parseInt($("mesSelector").value) || 1);
         renderStatsBTC();
     }
 
@@ -1095,10 +1217,12 @@
         refrescarBTC();
     }
 
-    // Acordeón para la guía
-    const toggleBtn = document.getElementById("toggleEstrategia");
-    const contenido = document.getElementById("estrategiaContenido");
-    const icon = document.getElementById("toggleIcon");
+    // ============================================================
+    // 7. ARRANQUE
+    // ============================================================
+    const toggleBtn = $("toggleEstrategia");
+    const contenido = $("estrategiaContenido");
+    const icon = $("toggleIcon");
     toggleBtn.addEventListener("click", () => {
         contenido.classList.toggle("visible");
         icon.textContent = contenido.classList.contains("visible") ? "▲" : "▼";
