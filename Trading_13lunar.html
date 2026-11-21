@@ -302,11 +302,13 @@
 <div class="dashboard-container">
     <div class="main-header">
         <h1>🌙 GUÍA DE TRADING LUNAR · 13 MESES <span class="badge-lunar">28 días · ciclo perfecto</span></h1>
-        <div class="sub">📆 Calendario estratégico con fases lunares reales (2026) · Decisión diaria integrada</div>
+        <div class="sub">📆 Calendario estratégico con fases lunares reales (2026–2027) · Decisión diaria integrada</div>
     </div>
 
     <div class="nav-controls">
         <div class="selector-group">
+            <label>🗓️ Año:</label>
+            <select id="anioSelector"></select>
             <label>🌕 Mes Lunar:</label>
             <select id="mesSelector"></select>
             <label>📅 Día (1-28):</label>
@@ -384,7 +386,7 @@
     <!-- Vista mensual -->
     <div id="monthlyView" class="month-view"></div>
     <div class="footer">
-        🌕 Reglas Gann adaptadas | Fases lunares reales 2026 | Todos los meses empiezan en jueves (1 ene 2026 fue jueves) | 13 meses de 28 días + día fuera del tiempo
+        🌕 Reglas Gann adaptadas | Fases lunares reales 2026–2027 | Los meses empiezan en jueves en 2026 y en viernes en 2027 | 13 meses de 28 días + día fuera del tiempo
     </div>
 </div>
 
@@ -406,12 +408,19 @@
     // Luna nueva de referencia: 18 ene 2026, 19:52 UTC
     const REF_LUNA_NUEVA = Date.UTC(2026, 0, 18, 19, 52, 0);
 
-    // Equinoccios y solsticios 2026 (fecha en hora del centro de México)
+    // Años disponibles (no bisiestos: 13×28 + 1 = 365 días)
+    const ANIOS = [2026, 2027];
+
+    // Equinoccios y solsticios (fecha en hora del centro de México, UTC-6)
     const eventosAstro = {
         "2026-03-20": "🌱 Equinoccio Primavera",
         "2026-06-21": "☀️ Solsticio Verano",
         "2026-09-22": "🍂 Equinoccio Otoño",
-        "2026-12-21": "❄️ Solsticio Invierno"
+        "2026-12-21": "❄️ Solsticio Invierno",
+        "2027-03-20": "🌱 Equinoccio Primavera",
+        "2027-06-21": "☀️ Solsticio Verano",
+        "2027-09-23": "🍂 Equinoccio Otoño",
+        "2027-12-21": "❄️ Solsticio Invierno"
     };
 
     const COLORES_RIESGO = {
@@ -476,26 +485,32 @@
         };
     }
 
+    // Cada año: 13 meses de 28 días desde el 1 de enero + Día Fuera del Tiempo el 31 de diciembre
     const calendario = [];
-    const cursor = new Date(Date.UTC(2026, 0, 1, 12));
-    for (let m = 1; m <= 13; m++) {
-        for (let d = 1; d <= 28; d++) {
-            const faseSemanal = d <= 7 ? "🌱 Iniciación" : d <= 14 ? "📈 Crecimiento"
-                              : d <= 21 ? "⚖️ Maduración" : "🍂 Cosecha/Cierre";
-            const alerta = (d === 10 || d === 17) ? "🔁 Revisión Estratégica" : "";
-            calendario.push(crearDia(new Date(cursor), m, d, faseSemanal, alerta));
-            cursor.setUTCDate(cursor.getUTCDate() + 1);
+    for (const anio of ANIOS) {
+        const cursor = new Date(Date.UTC(anio, 0, 1, 12));
+        for (let m = 1; m <= 13; m++) {
+            for (let d = 1; d <= 28; d++) {
+                const faseSemanal = d <= 7 ? "🌱 Iniciación" : d <= 14 ? "📈 Crecimiento"
+                                  : d <= 21 ? "⚖️ Maduración" : "🍂 Cosecha/Cierre";
+                const alerta = (d === 10 || d === 17) ? "🔁 Revisión Estratégica" : "";
+                const dia = crearDia(new Date(cursor), m, d, faseSemanal, alerta);
+                dia.anio = anio;
+                calendario.push(dia);
+                cursor.setUTCDate(cursor.getUTCDate() + 1);
+            }
         }
+        const diaExtra = crearDia(new Date(Date.UTC(anio, 11, 31, 12)), "Cierre", 1,
+            "🔄 RESETEO", "Balance Final", "🕯️ Día Fuera del Tiempo · Cierre anual");
+        diaExtra.moonType = "reset";
+        diaExtra.anio = anio;
+        calendario.push(diaExtra);
     }
-    // Día fuera del tiempo (31 dic)
-    const diaExtra = crearDia(new Date(Date.UTC(2026, 11, 31, 12)), "Cierre", 1,
-        "🔄 RESETEO", "Balance Final", "🕯️ Día Fuera del Tiempo · Cierre anual");
-    diaExtra.moonType = "reset";
-    calendario.push(diaExtra);
+    let anioActual = ANIOS[0];
 
     function getDiaByLunar(month, day) {
         if (month >= 1 && month <= 13) {
-            return calendario.find(d => d.lunarMonth === month && d.lunarDay === day);
+            return calendario.find(d => d.anio === anioActual && d.lunarMonth === month && d.lunarDay === day);
         }
         return null;
     }
@@ -571,8 +586,8 @@
         const decision = getTradingDecision(diaData);
         const c = COLORES_RIESGO[decision.riesgo] || "#ffc107";
         const titulo = diaData.lunarMonth === "Cierre"
-            ? "🕯️ Día Fuera del Tiempo"
-            : `${mesesNombres[diaData.lunarMonth - 1]} · Día ${diaData.lunarDay}`;
+            ? `🕯️ ${diaData.anio} · Día Fuera del Tiempo`
+            : `${diaData.anio} · ${mesesNombres[diaData.lunarMonth - 1]} · Día ${diaData.lunarDay}`;
         panel.innerHTML = `
             <div class="decision-header">
                 <div class="decision-title">📅 ${titulo} (${diaData.weekday})</div>
@@ -596,11 +611,11 @@
     }
 
     function renderMonthView(month) {
-        const monthDays = calendario.filter(d => d.lunarMonth === month);
+        const monthDays = calendario.filter(d => d.anio === anioActual && d.lunarMonth === month);
         monthDays.sort((a, b) => a.lunarDay - b.lunarDay);
         const container = document.getElementById("monthlyView");
         const semanaHeaders = ["D","L","M","M","J","V","S"];
-        let html = `<div style="display:flex; justify-content:space-between;"><div class="month-title">📆 ${mesesNombres[month-1]} · 28 días</div><div style="font-size:0.7rem;">🌙 Clic en día para consultar</div></div>`;
+        let html = `<div style="display:flex; justify-content:space-between;"><div class="month-title">📆 ${anioActual} · ${mesesNombres[month-1]} · 28 días</div><div style="font-size:0.7rem;">🌙 Clic en día para consultar</div></div>`;
         html += `<div class="calendar-grid">`;
         semanaHeaders.forEach(h => html += `<div class="weekday-label">${h}</div>`);
 
@@ -621,6 +636,17 @@
                         <div class="fase-sema">${dia.faseSemanal.substring(0,2)}</div>
                     </div>`;
         }
+        // En el mes 13, el día siguiente al 28 es el Día Fuera del Tiempo (31 dic)
+        if (month === 13) {
+            const cierre = calendario.find(d => d.anio === anioActual && d.lunarMonth === "Cierre");
+            if (cierre) {
+                html += `<div class="day-cell" style="background:#2b2f3a;" onclick="selectCierre()">
+                            <div><strong>31 dic</strong></div>
+                            <div class="luna-icon">🕯️</div>
+                            <div class="fase-sema">Fuera</div>
+                        </div>`;
+            }
+        }
         html += `</div>`;
         container.innerHTML = html;
     }
@@ -635,7 +661,19 @@
         }
     }
 
-    window.selectDay = function(month, day) {
+    function setAnio(anio) {
+        anioActual = anio;
+        document.getElementById("anioSelector").value = anio;
+    }
+
+    window.selectCierre = function() {
+        document.getElementById("mesSelector").value = 13;
+        renderDiaPanel(calendario.find(d => d.anio === anioActual && d.lunarMonth === "Cierre"));
+        renderMonthView(13);
+    };
+
+    window.selectDay = function(month, day, anio) {
+        if (anio) setAnio(anio);
         document.getElementById("mesSelector").value = month;
         const diaSelect = document.getElementById("diaSelector");
         llenarDias(diaSelect);
@@ -649,12 +687,12 @@
         const hoyData = calendario.find(d => d.gregorio === hoyIso);
         if (!hoyData) {
             document.getElementById("decisionPanel").innerHTML =
-                `<div style="padding:1rem;">📅 Hoy (${hoyIso}) está fuera del calendario 2026.</div>`;
+                `<div style="padding:1rem;">📅 Hoy (${hoyIso}) está fuera del calendario (${ANIOS[0]}–${ANIOS[ANIOS.length - 1]}).</div>`;
             return false;
         }
+        setAnio(hoyData.anio);
         if (hoyData.lunarMonth === "Cierre") {
-            renderDiaPanel(hoyData);
-            renderMonthView(13);
+            selectCierre();
             return true;
         }
         selectDay(hoyData.lunarMonth, hoyData.lunarDay);
@@ -662,8 +700,22 @@
     }
 
     function populateSelectors() {
+        const anioSelect = document.getElementById("anioSelector");
         const mesSelect = document.getElementById("mesSelector");
         const diaSelect = document.getElementById("diaSelector");
+        anioSelect.innerHTML = "";
+        for (const a of ANIOS) {
+            const option = document.createElement("option");
+            option.value = a;
+            option.textContent = a;
+            anioSelect.appendChild(option);
+        }
+        anioSelect.addEventListener("change", () => {
+            anioActual = parseInt(anioSelect.value);
+            const mes = parseInt(mesSelect.value);
+            renderMonthView(mes);
+            renderDecisionPanel(mes, parseInt(diaSelect.value));
+        });
         mesSelect.innerHTML = "";
         for (let i = 1; i <= 13; i++) {
             const option = document.createElement("option");
@@ -690,8 +742,8 @@
         });
         document.getElementById("hoyBtn").addEventListener("click", irAHoy);
 
-        // Al abrir, mostrar hoy si cae en 2026; si no, Mes 1 Día 1
-        if (!irAHoy()) selectDay(1, 1);
+        // Al abrir, mostrar hoy si cae en un año disponible; si no, Mes 1 Día 1 del primer año
+        if (!irAHoy()) selectDay(1, 1, ANIOS[0]);
     }
 
     // Acordeón para la guía
