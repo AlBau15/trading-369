@@ -331,6 +331,52 @@
             color: #eef2ff;
         }
 
+        .presion-box {
+            background: #0b141c;
+            border-radius: 1rem;
+            padding: 0.7rem 0.9rem;
+            margin: 0.4rem 0 0.6rem;
+            border: 1px solid #26333e;
+        }
+
+        .presion-head { font-size: 0.9rem; font-weight: 600; }
+
+        .presion-bar {
+            position: relative;
+            height: 18px;
+            background: #16212c;
+            border-radius: 9px;
+            margin: 0.5rem 0 0.35rem;
+            overflow: hidden;
+        }
+
+        .presion-fill { position: absolute; top: 0; bottom: 0; }
+
+        .presion-centro {
+            position: absolute;
+            left: 50%;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #ffd54a;
+        }
+
+        .presion-lado {
+            position: absolute;
+            top: 2px;
+            font-size: 0.6rem;
+            color: #cbdbe6;
+            z-index: 1;
+        }
+
+        .presion-sub { font-size: 0.72rem; color: #9aaec0; }
+
+        .presion-num {
+            font-size: 0.6rem;
+            font-weight: 700;
+            opacity: 0.9;
+        }
+
         .greg-leyenda {
             font-size: 0.72rem;
             color: #9aaec0;
@@ -641,13 +687,58 @@
     // Todas las lunaciones de 2018 a 2028 (fechas en hora del centro de México)
     const lunaciones = [];
     for (let k = Math.floor((2017.9 - 2000) * 12.3685); k <= Math.ceil((2028.2 - 2000) * 12.3685); k++) {
+        const tN = momentoFase(k), tL = momentoFase(k + 0.5), tSig = momentoFase(k + 1);
         lunaciones.push({
-            dN: isoMX(momentoFase(k)),          // luna nueva
+            tN, tL, tSig,                       // momentos exactos (ms) para la presión
+            dN: isoMX(tN),                      // luna nueva
             dC: isoMX(momentoFase(k + 0.25)),   // cuarto creciente
-            dL: isoMX(momentoFase(k + 0.5)),    // luna llena
+            dL: isoMX(tL),                      // luna llena
             dM: isoMX(momentoFase(k + 0.75)),   // cuarto menguante
-            dSig: isoMX(momentoFase(k + 1))     // siguiente luna nueva
+            dSig: isoMX(tSig)                   // siguiente luna nueva
         });
+    }
+
+    // ------------------------------------------------------------
+    // PRESIÓN (estilo libro de órdenes): cada vista aporta una fuerza de −1 a +1
+    // que crece y se desvanece de forma gradual a lo largo de su ciclo:
+    //   inicio del ciclo 0 → máxima fuerza compradora a mitad de la subida →
+    //   0 en el pico (día 14–15 / luna llena) → máxima fuerza vendedora a mitad
+    //   de la bajada → 0 al cerrar el ciclo.
+    // Presión combinada = promedio de las dos vistas, en escala −100 a +100.
+    // ------------------------------------------------------------
+    function tMedioDia(iso) { return Date.parse(iso + "T18:00:00Z"); }   // mediodía en el centro de México
+
+    function fuerza13(iso) {
+        const a = +iso.slice(0, 4);
+        let doy = difDias(`${a}-01-01`, iso);
+        if (esBisiesto(a)) {
+            if (iso.slice(5) === "02-29") return 0;
+            if (iso > `${a}-02-29`) doy -= 1;
+        }
+        if (doy >= 364) return 0;                 // Día Fuera del Tiempo
+        const d = doy % 28 + 1;
+        return Math.sin(2 * Math.PI * (d - 0.5) / 28);
+    }
+
+    function fuerzaReal(iso) {
+        const t = tMedioDia(iso);
+        const L = lunaciones.find(L => L.tN <= t && t < L.tSig);
+        if (!L) return 0;
+        return t < L.tL ? Math.sin(Math.PI * (t - L.tN) / (L.tL - L.tN))
+                        : -Math.sin(Math.PI * (t - L.tL) / (L.tSig - L.tL));
+    }
+
+    function presion(iso) { return Math.round(50 * (fuerza13(iso) + fuerzaReal(iso))); }
+
+    function etiquetaPresion(p) {
+        return p >= 50 ? "compradora fuerte" : p >= 15 ? "compradora" : p > -15 ? "neutral"
+             : p > -50 ? "vendedora" : "vendedora fuerte";
+    }
+
+    function colorPresion(p) {
+        const k = Math.min(1, Math.abs(p) / 100);
+        const base = [30, 42, 54], fin = p >= 0 ? [31, 125, 64] : [150, 42, 42];
+        return `rgb(${base.map((b, i) => Math.round(b + (fin[i] - b) * k)).join(",")})`;
     }
 
     function lunacionDe(iso) {
@@ -753,7 +844,8 @@
             const base = mapa13.get(iso);
             calendarioGreg.push({
                 ...base, anio, lunarMonth: +iso.slice(5, 7), lunarDay: +iso.slice(8, 10),
-                d13: base, dReal: mapaReal.get(iso)
+                d13: base, dReal: mapaReal.get(iso),
+                f13: fuerza13(iso), fReal: fuerzaReal(iso), presion: presion(iso)
             });
         }
     }
@@ -923,18 +1015,31 @@
     function renderDiaPanelGreg(dia) {
         diaSeleccionado = dia.lunarDay;
         const d13 = dia.d13, dR = dia.dReal;
-        const c13 = getTradingDecision(d13).color, cR = getTradingDecision(dR).color;
-        const coinciden = c13 === cR
-            ? "✅ Las dos vistas coinciden en la etapa de hoy."
-            : "↔️ Las vistas no coinciden: tómalo como señal de cautela.";
+        const p = dia.presion, ayer = presion(sumarDias(dia.gregorio, -1));
+        const tendencia = p > ayer ? "↑ ganando fuerza compradora" : p < ayer ? "↓ ganando fuerza vendedora" : "→ estable";
+        const colP = p >= 15 ? "#4caf50" : p <= -15 ? "#f44336" : "#cbdbe6";
+        const fmtF = f => `${f >= 0 ? "+" : ""}${Math.round(f * 100)}`;
+        const relleno = p >= 0
+            ? `left:50%; width:${p / 2}%; background:#4caf50;`
+            : `right:50%; width:${-p / 2}%; background:#f44336;`;
         $("decisionPanel").innerHTML = `
             <div class="decision-header">
                 <div class="decision-title">📅 ${dia.anio} · ${dia.lunarDay} de ${MESES_GREG[dia.lunarMonth - 1]} (${dia.weekday})</div>
             </div>
+            <div class="presion-box">
+                <div class="presion-head">⚖️ Presión combinada:
+                    <b style="color:${colP}">${p > 0 ? "+" : ""}${p}</b> · ${etiquetaPresion(p)} · ${tendencia}</div>
+                <div class="presion-bar">
+                    <span class="presion-lado" style="left:6px">Vendedores</span>
+                    <span class="presion-lado" style="right:6px">Compradores</span>
+                    <div class="presion-fill" style="${relleno}"></div>
+                    <div class="presion-centro"></div>
+                </div>
+                <div class="presion-sub">Aporte de cada vista: 🗓️ 28 días ${fmtF(dia.f13)} · 🌙 lunar real ${fmtF(dia.fReal)} (ayer: ${ayer > 0 ? "+" : ""}${ayer})</div>
+            </div>
             ${bloqueVista("🗓️ Vista 13 meses (28 días)", etiqueta13(d13), d13)}
             ${bloqueVista("🌙 Vista ciclo lunar real", etiquetaReal(dR), dR)}
             <div class="info-grid">
-                <div class="info-item">${coinciden}</div>
                 <div class="info-item">🌓 Luna real: ${dia.moonPhase}</div>
                 ${dia.lunaLlenaCerca ? `<div class="info-item">🌕 Luna Llena a ±2 días</div>` : ''}
                 ${dia.evento ? `<div class="info-item">✨ ${dia.evento}</div>` : ''}
@@ -945,22 +1050,33 @@
     // Gráfica del mes gregoriano: BTC real + dos franjas con la etapa de cada vista
     function renderGregChart(monthDays) {
         const N = monthDays.length;
-        const W = 300, H = 138, x0 = 30, x1 = W - 10, yTop = 14, yBase = 88;
+        const W = 300, H = 176, x0 = 30, x1 = W - 10, yTop = 14, yBase = 76;
         const paso = (x1 - x0) / (N - 1);
         const x = d => x0 + (d - 1) * paso;
         let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">`;
         svg += `<line x1="${x0}" y1="${yBase}" x2="${x1}" y2="${yBase}" stroke="#3d7bff" stroke-width="1.5"/>`;
+
+        // Barras de presión (libro de órdenes): arriba compradores, abajo vendedores
+        const yC = 106, amp = 22;
+        svg += `<text x="2" y="${yC - amp + 7}" fill="#4caf50" font-size="7">Compra</text>`;
+        svg += `<text x="2" y="${yC + amp}" fill="#f44336" font-size="7">Venta</text>`;
+        svg += `<line x1="${x0 - paso / 2}" y1="${yC}" x2="${x1 + paso / 2}" y2="${yC}" stroke="#2a3a48" stroke-width="1"/>`;
+        monthDays.forEach((dia, i) => {
+            const h = Math.abs(dia.presion) / 100 * amp;
+            const yy = dia.presion >= 0 ? yC - h : yC;
+            svg += `<rect x="${(x(i + 1) - paso * 0.4).toFixed(1)}" y="${yy.toFixed(1)}" width="${(paso * 0.8).toFixed(1)}" height="${h.toFixed(1)}" fill="${dia.presion >= 0 ? "#4caf50" : "#f44336"}" opacity="${(0.35 + 0.65 * Math.abs(dia.presion) / 100).toFixed(2)}"/>`;
+        });
 
         // Franjas de etapa
         const franja = (yy, etiqueta, getD) => {
             svg += `<text x="2" y="${yy + 6}" fill="#9aaec0" font-size="7">${etiqueta}</text>`;
             monthDays.forEach((dia, i) => {
                 const col = COLOR_FRANJA[getTradingDecision(getD(dia)).color];
-                svg += `<rect x="${(x(i + 1) - paso / 2).toFixed(1)}" y="${yy}" width="${(paso + 0.3).toFixed(1)}" height="8" fill="${col}"/>`;
+                svg += `<rect x="${(x(i + 1) - paso / 2).toFixed(1)}" y="${yy}" width="${(paso + 0.3).toFixed(1)}" height="7" fill="${col}"/>`;
             });
         };
-        franja(96, "28 días", d => d.d13);
-        franja(107, "Lunar", d => d.dReal);
+        franja(136, "28 días", d => d.d13);
+        franja(146, "Lunar", d => d.dReal);
 
         // Lunas llenas y nuevas
         monthDays.forEach((dia, i) => {
@@ -974,7 +1090,7 @@
         });
 
         if (diaSeleccionado && diaSeleccionado <= N) {
-            svg += `<line x1="${x(diaSeleccionado)}" y1="${yTop}" x2="${x(diaSeleccionado)}" y2="115" stroke="#ffd54a" stroke-width="1.2" stroke-dasharray="3 3"/>`;
+            svg += `<line x1="${x(diaSeleccionado)}" y1="${yTop}" x2="${x(diaSeleccionado)}" y2="153" stroke="#ffd54a" stroke-width="1.2" stroke-dasharray="3 3"/>`;
         }
 
         let pie;
@@ -997,7 +1113,7 @@
         }
         svg += `</svg>`;
         return `<div class="ciclo-chart">
-                    <div class="ciclo-chart-title">📈 BTC en el mes y etapa de cada vista</div>
+                    <div class="ciclo-chart-title">📈 BTC · ⚖️ presión combinada · etapa de cada vista</div>
                     ${svg}
                     <div class="ciclo-chart-legend">
                         ${pie}
@@ -1086,13 +1202,13 @@
         for (const dia of monthDays) {
             const moonEmoji = dia.moonPhase.split(" ")[0];
             if (vista === "greg") {
-                // Casilla partida en diagonal: ◣ vista 13 meses · ◥ vista lunar real
-                const c13 = COLOR_CELDA[getTradingDecision(dia.d13).color];
-                const cR = COLOR_CELDA[getTradingDecision(dia.dReal).color];
-                html += `<div class="day-cell" style="background:linear-gradient(45deg, ${c13} 0 50%, ${cR} 50% 100%);" onclick="selectDay(${month}, ${dia.lunarDay})">
+                // Color gradual según la presión combinada (verde = compradores, rojo = vendedores)
+                const p = dia.presion;
+                html += `<div class="day-cell" style="background:${colorPresion(p)};" onclick="selectDay(${month}, ${dia.lunarDay})">
                             <div><strong>${dia.lunarDay}</strong></div>
                             <div class="luna-icon">${moonEmoji}</div>
                             <div class="fase-sema">${dia.d13.faseSemanal.substring(0,2)}${dia.dReal.faseSemanal.substring(0,2)}</div>
+                            <div class="presion-num">${p > 0 ? "+" : ""}${p}</div>
                         </div>`;
                 continue;
             }
@@ -1119,8 +1235,8 @@
                  </svg>`;
         html += `</div>`;
         if (vista === "greg") {
-            html += `<div class="greg-leyenda">Cada día: <b>◣ esquina inferior izquierda</b> = vista 13 meses ·
-                     <b>◥ esquina superior derecha</b> = vista lunar real. Los iconos de abajo van en el mismo orden.</div>`;
+            html += `<div class="greg-leyenda">El color y el número de cada día son la <b>presión combinada</b> de las dos vistas
+                     (−100 vendedores · +100 compradores). Más intenso = más fuerza. Iconos: 🗓️ etapa en 28 días · 🌙 etapa lunar real.</div>`;
             html += renderGregChart(monthDays);
         } else {
             html += renderCicloChart(month, monthDays);
@@ -1299,6 +1415,141 @@
         return { res, meses };
     }
 
+    // Prueba de la presión: ¿qué hizo BTC después de cada nivel de presión?
+    // La presión de cada día se conoce de antemano (es calendario), así que medimos el
+    // cambio de BTC del cierre de ese día al cierre de 1 y de 7 días después.
+    const NIVELES_PRESION = [
+        { nombre: "🟢 Compradora fuerte", rango: "+50 a +100", min: 50,   max: 101 },
+        { nombre: "🟩 Compradora",        rango: "+15 a +49",  min: 15,   max: 50 },
+        { nombre: "⬜ Neutral",           rango: "−14 a +14",  min: -14,  max: 15 },
+        { nombre: "🟥 Vendedora",         rango: "−49 a −15",  min: -49,  max: -14 },
+        { nombre: "🔴 Vendedora fuerte",  rango: "−100 a −50", min: -101, max: -49 }
+    ];
+
+    function resumenRet(rs) {
+        const v = [...rs].sort((a, b) => a - b), n = v.length;
+        return {
+            n,
+            prom: n ? v.reduce((s, x) => s + x, 0) / n : 0,
+            med: n ? (n % 2 ? v[(n - 1) / 2] : (v[n / 2 - 1] + v[n / 2]) / 2) : 0,
+            pos: n ? v.filter(x => x > 0).length / n * 100 : 0
+        };
+    }
+
+    function calcularPruebaPresion() {
+        const hoyIso = new Date().toISOString().slice(0, 10);
+        const acc = NIVELES_PRESION.map(() => ({ r1: [], r7: [] }));
+        for (const [iso, p0] of btcPrecios) {
+            const iso1 = sumarDias(iso, 1), iso7 = sumarDias(iso, 7);
+            const p1 = btcPrecios.get(iso1), p7 = btcPrecios.get(iso7);
+            if (p1 == null || iso1 >= hoyIso) continue;
+            const pr = presion(iso);
+            const i = NIVELES_PRESION.findIndex(b => pr >= b.min && pr < b.max);
+            if (i < 0) continue;
+            acc[i].r1.push((p1 / p0 - 1) * 100);
+            if (p7 != null && iso7 < hoyIso) acc[i].r7.push((p7 / p0 - 1) * 100);
+        }
+        return NIVELES_PRESION.map((b, i) => ({ ...b, d1: resumenRet(acc[i].r1), d7: resumenRet(acc[i].r7) }));
+    }
+
+    function renderPruebaPresion() {
+        const res = calcularPruebaPresion();
+        const col = v => Math.round(v * 10) === 0 ? "#cbdbe6" : v > 0 ? "#4caf50" : "#f44336";
+        const celda = r => `<b>${r.pos.toFixed(0)}%</b><br><span style="font-size:0.7rem;color:${col(r.prom)}">${fmtPct(r.prom)}</span>`;
+        let filas = "";
+        for (const r of res) {
+            filas += `<tr>
+                <td>${r.nombre}<br><span style="font-size:0.68rem;color:#9aaec0">${r.rango} · ${r.d1.n} días</span></td>
+                <td>${celda(r.d1)}</td>
+                <td>${celda(r.d7)}</td>
+            </tr>`;
+        }
+        const fuerte = res[0], debil = res[4];
+        const dif = fuerte.d7.pos - debil.d7.pos;
+        const veredicto = dif >= 10
+            ? `Los días de presión compradora fuerte subieron a 7 días ${dif.toFixed(0)} puntos más seguido que los de presión vendedora fuerte: va en la dirección de tu idea.`
+            : dif <= -10
+            ? `Los días de presión vendedora fuerte subieron a 7 días ${(-dif).toFixed(0)} puntos más seguido que los de compradora fuerte: va en contra de la idea.`
+            : `La diferencia a 7 días entre compradora fuerte y vendedora fuerte es de solo ${dif.toFixed(0)} puntos: por ahora la presión no separa bien los días buenos de los malos.`;
+        return `
+            <div class="stats-title">⚖️ Prueba de la presión combinada</div>
+            <div class="stats-sub">${btcFuente} · todos los días desde ${[...btcPrecios.keys()].sort()[0]} · ¿qué hizo BTC después?</div>
+            <table class="stats-table">
+                <tr><th>Presión del día</th><th>Día siguiente</th><th>7 días después</th></tr>
+                ${filas}
+            </table>
+            <div class="stats-nota">
+                Arriba: % de veces que BTC subió. Abajo: cambio promedio.
+                Si la presión funciona, debería verse una escalera: verde fuerte arriba de 50% y rojo fuerte abajo.<br>
+                🔎 ${veredicto}<br>
+                Los periodos de 7 días se enciman entre sí, así que hay menos casos independientes de los que parece.
+            </div>`;
+    }
+
+    // Prueba de volatilidad: ¿BTC se mueve MÁS (sin importar la dirección) en alguna fase?
+    // Movimiento diario = |cierre de hoy / cierre de ayer − 1|.
+    function calcularVolatilidad(v) {
+        const hoyIso = new Date().toISOString().slice(0, 10);
+        const mov = iso => {
+            const p0 = btcPrecios.get(sumarDias(iso, -1)), p1 = btcPrecios.get(iso);
+            return p0 != null && p1 != null ? Math.abs(p1 / p0 - 1) * 100 : null;
+        };
+        const pool = Object.fromEntries(VENTANAS.map(w => [w.key, []]));
+        let gana1 = 0, total = 0;
+        for (const p of periodosHistoricos(v)) {
+            if (p.m2.fin >= hoyIso) continue;                    // solo ciclos terminados
+            const prom = {};
+            for (const w of VENTANAS) {
+                const ms = [];
+                for (let iso = p[w.key].ini; iso <= p[w.key].fin; iso = sumarDias(iso, 1)) {
+                    const m = mov(iso);
+                    if (m !== null) ms.push(m);
+                }
+                pool[w.key].push(...ms);
+                prom[w.key] = ms.length ? ms.reduce((s, x) => s + x, 0) / ms.length : null;
+            }
+            if (prom.m1 !== null && prom.m2 !== null) { total++; if (prom.m1 > prom.m2) gana1++; }
+        }
+        const media = a => a.length ? a.reduce((s, x) => s + x, 0) / a.length : 0;
+        return {
+            res: VENTANAS.map(w => ({ ...w, mov: media(pool[w.key]) })),
+            pct1: total ? gana1 / total * 100 : 0, total
+        };
+    }
+
+    function renderPruebaVolatilidad() {
+        const R = calcularVolatilidad("real"), A = calcularVolatilidad("13");
+        const max = Math.max(...R.res.map(r => r.mov), ...A.res.map(r => r.mov)) || 1;
+        const barra = (v, col) => `<span class="stats-bar" style="width:${(v / max * 40).toFixed(0)}px;background:${col}"></span>`;
+        let filas = "";
+        VENTANAS.forEach((w, i) => {
+            filas += `<tr class="${w.sep ? "sep" : ""}">
+                <td>${w.nombre}<br><span style="font-size:0.68rem;color:#9aaec0">${w.rReal}</span></td>
+                <td>${R.res[i].mov.toFixed(2)}%${barra(R.res[i].mov, "#f7931a")}</td>
+                <td>${A.res[i].mov.toFixed(2)}%${barra(A.res[i].mov, "#3d7bff")}</td>
+            </tr>`;
+        });
+        const m1 = R.res.find(r => r.key === "m1").mov, m2 = R.res.find(r => r.key === "m2").mov;
+        const dif = (m1 / m2 - 1) * 100;
+        const veredicto = Math.abs(dif) < 5 && Math.abs(R.pct1 - 50) < 8
+            ? `De luna nueva a llena BTC se mueve ${fmtPct(dif)} respecto a llena→nueva, y la 1ª mitad fue la más movida en el ${R.pct1.toFixed(0)}% de las lunaciones: prácticamente igual. Por ahora la luna no marca cuándo hay más movimiento.`
+            : dif > 0
+            ? `De luna nueva a llena BTC se mueve ${fmtPct(dif)} más por día que de llena a nueva, y la 1ª mitad fue la más movida en el ${R.pct1.toFixed(0)}% de las ${R.total} lunaciones. Hay una inclinación hacia más movimiento en la ventana 🌑→🌕.`
+            : `De luna nueva a llena BTC se mueve ${fmtPct(dif)} por día respecto a llena→nueva, y la 1ª mitad fue la más movida solo en el ${R.pct1.toFixed(0)}% de las ${R.total} lunaciones. El movimiento se inclina hacia la ventana 🌕→🌑.`;
+        return `
+            <div class="stats-title" style="margin-top:1.6rem">🌊 Prueba de volatilidad por fase</div>
+            <div class="stats-sub">Movimiento diario promedio de BTC sin importar si sube o baja · ${btcFuente}</div>
+            <table class="stats-table">
+                <tr><th>Fase</th><th>🌙 Lunar real</th><th>🗓️ 28 días</th></tr>
+                ${filas}
+            </table>
+            <div class="stats-nota">
+                Más alto = BTC se mueve más fuerte en esa fase (hacia arriba o hacia abajo).<br>
+                🔎 ${veredicto}<br>
+                Sirve para decidir el tamaño de posición y qué tan amplios poner los stops, no la dirección.
+            </div>`;
+    }
+
     // Tabla lado a lado: % de veces que sube y mediana, en cada vista
     function renderStatsComparacion(cont) {
         const a = calcularStats("13"), b = calcularStats("real");
@@ -1313,8 +1564,8 @@
                 <td>${celda(b.res[i])}</td>
             </tr>`;
         });
-        cont.innerHTML = `
-            <div class="stats-title">📊 BTC por fase · comparación de vistas</div>
+        cont.innerHTML = renderPruebaPresion() + renderPruebaVolatilidad() + `
+            <div class="stats-title" style="margin-top:1.6rem">📊 BTC por fase · comparación de vistas</div>
             <div class="stats-sub">${btcFuente} · ${fechas[0]} a ${fechas[fechas.length - 1]} ·
                 ${a.meses} meses de 28 días y ${b.meses} lunaciones completas</div>
             <table class="stats-table">
