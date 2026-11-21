@@ -759,7 +759,7 @@
     }
 
     // Estado de la vista
-    let vista = "13";             // "13" | "real" | "greg"
+    let vista = "greg";           // "13" | "real" | "greg" (la gregoriana es la vista inicial)
     let anioActual = ANIOS[0];
     let diaSeleccionado = null;
 
@@ -1201,6 +1201,7 @@
 
     function populateSelectors() {
         llenarOpciones($("vistaSelector"), [["13", "13 meses (28 días)"], ["real", "Ciclo lunar real"], ["greg", "Gregoriano (ambas)"]]);
+        $("vistaSelector").value = vista;
         llenarOpciones($("anioSelector"), ANIOS.map(a => [a, a]));
         const mesActual = () => parseInt($("mesSelector").value) || 1;
         const diaActual = () => parseInt($("diaSelector").value) || 1;
