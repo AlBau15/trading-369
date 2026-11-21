@@ -283,6 +283,78 @@
             display: block;
         }
 
+        .ciclo-chart-legend {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.4rem 1rem;
+            font-size: 0.72rem;
+            color: #cbdbe6;
+            padding: 0.3rem 0 0.2rem;
+        }
+
+        .ciclo-chart-legend i {
+            display: inline-block;
+            width: 10px;
+            height: 3px;
+            border-radius: 2px;
+            vertical-align: middle;
+            margin-right: 2px;
+        }
+
+        /* Estadística BTC */
+        .stats-title {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-bottom: 0.3rem;
+        }
+
+        .stats-sub {
+            font-size: 0.72rem;
+            color: #9aaec0;
+            margin-bottom: 0.8rem;
+        }
+
+        .stats-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .stats-table th {
+            text-align: right;
+            color: #9aaec0;
+            font-weight: 600;
+            padding: 0.4rem 0.3rem;
+            border-bottom: 1px solid #26333e;
+        }
+
+        .stats-table th:first-child, .stats-table td:first-child { text-align: left; }
+
+        .stats-table td {
+            text-align: right;
+            padding: 0.45rem 0.3rem;
+            border-bottom: 1px solid #1a2631;
+        }
+
+        .stats-table tr.sep td { border-top: 2px solid #2a3a48; }
+
+        .stats-bar {
+            display: inline-block;
+            height: 6px;
+            border-radius: 3px;
+            background: #3d7bff;
+            vertical-align: middle;
+            margin-left: 4px;
+        }
+
+        .stats-nota {
+            font-size: 0.72rem;
+            color: #9aaec0;
+            margin-top: 0.8rem;
+            line-height: 1.4;
+        }
+
         .weekday-label {
             text-align: center;
             font-weight: bold;
@@ -418,6 +490,9 @@
 
     <!-- Vista mensual -->
     <div id="monthlyView" class="month-view"></div>
+
+    <!-- Estadística histórica de BTC por fase -->
+    <div id="statsBTC" class="month-view"></div>
     <div class="footer">
         🌕 Reglas Gann adaptadas | Fases lunares reales 2026–2027 | Los meses empiezan en jueves en 2026 y en viernes en 2027 | 13 meses de 28 días + día fuera del tiempo
     </div>
@@ -648,7 +723,7 @@
     let diaSeleccionado = null;
 
     // Gráfica del ciclo: días 1-14 suben (verde), días 15-28 bajan (rojo)
-    function renderCicloChart() {
+    function renderCicloChart(month) {
         const W = 300, H = 120, x0 = 14, x1 = W - 14, yBase = 95, yTop = 18;
         const x = d => x0 + (d - 1) * (x1 - x0) / 27;
         const y = d => d <= 14
@@ -679,8 +754,34 @@
             svg += `<line x1="${x(d)}" y1="${y(d)}" x2="${x(d)}" y2="${yBase}" stroke="#ffd54a" stroke-width="1" stroke-dasharray="3 3"/>`;
             svg += `<circle cx="${x(d)}" cy="${y(d)}" r="5" fill="#ffd54a" stroke="#0c1117" stroke-width="2"/>`;
         }
+
+        // Precio real de BTC en este mes (cambio % contra el cierre previo al día 1)
+        let pie = "";
+        const serie = btcSerieMes(anioActual, month);
+        if (serie) {
+            const vals = serie.filter(p => p.pct !== null).map(p => p.pct);
+            const min = Math.min(0, ...vals), max = Math.max(0, ...vals);
+            const rango = (max - min) || 1;
+            const yp = v => yBase - (v - min) * (yBase - yTop) / rango;
+            const pts = serie.filter(p => p.pct !== null).map(p => `${x(p.dia).toFixed(1)},${yp(p.pct).toFixed(1)}`).join(" ");
+            svg += `<line x1="${x0}" y1="${yp(0)}" x2="${x1}" y2="${yp(0)}" stroke="#f7931a" stroke-width="0.8" stroke-dasharray="1 3" opacity="0.6"/>`;
+            svg += `<polyline points="${pts}" fill="none" stroke="#f7931a" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>`;
+            const ult = serie.filter(p => p.pct !== null).pop();
+            svg += `<circle cx="${x(ult.dia)}" cy="${yp(ult.pct)}" r="3" fill="#f7931a"/>`;
+            const fmt = v => { const r = Math.round(v * 10) / 10 || 0; return `${r > 0 ? "+" : ""}${r.toFixed(1)}%`; };
+            const color = ult.pct >= 0 ? "#4caf50" : "#f44336";
+            pie = `<div class="ciclo-chart-legend">
+                     <span><i style="background:#4caf50"></i><i style="background:#f44336"></i> Teórico</span>
+                     <span><i style="background:#f7931a"></i> BTC real: <b style="color:${color}">${fmt(ult.pct)}</b> al día ${ult.dia}</span>
+                     <span style="opacity:0.7">máx ${fmt(max)} · mín ${fmt(min)}</span>
+                   </div>`;
+        } else {
+            pie = `<div class="ciclo-chart-legend" style="opacity:0.7">${btcEstado === "cargando"
+                ? "⏳ Cargando precio de BTC..." : btcEstado === "error"
+                ? "⚠️ No se pudo descargar el precio de BTC." : "BTC: sin datos para este mes todavía."}</div>`;
+        }
         svg += `</svg>`;
-        return `<div class="ciclo-chart"><div class="ciclo-chart-title">📈 Ciclo de 28 días: sube 1–14 · baja 15–28</div>${svg}</div>`;
+        return `<div class="ciclo-chart"><div class="ciclo-chart-title">📈 Ciclo de 28 días: sube 1–14 · baja 15–28</div>${svg}${pie}</div>`;
     }
 
     function renderMonthView(month) {
@@ -726,7 +827,7 @@
                           stroke-dasharray="6 5" vector-effect="non-scaling-stroke"/>
                  </svg>`;
         html += `</div>`;
-        html += renderCicloChart();
+        html += renderCicloChart(month);
         container.innerHTML = html;
     }
 
@@ -825,6 +926,175 @@
         if (!irAHoy()) selectDay(1, 1, ANIOS[0]);
     }
 
+    // ------------------------------------------------------------
+    // 4. PRECIO DE BTC (se descarga en el navegador) Y ESTADÍSTICA POR FASE
+    // ------------------------------------------------------------
+    let btcPrecios = null;      // Map "YYYY-MM-DD" -> cierre diario (UTC)
+    let btcEstado = "cargando"; // "cargando" | "ok" | "error"
+    let btcFuente = "";
+
+    function esBisiesto(a) { return (a % 4 === 0 && a % 100 !== 0) || a % 400 === 0; }
+
+    // Fecha gregoriana de un día lunar en cualquier año.
+    // En años bisiestos se omite el 29 de febrero (como en el calendario de 13 lunas).
+    function isoDeLunar(anio, mes, dia) {
+        const idx = (mes - 1) * 28 + (dia - 1);
+        let t = Date.UTC(anio, 0, 1, 12) + idx * MS_DIA;
+        if (esBisiesto(anio) && t >= Date.UTC(anio, 1, 29, 12)) t += MS_DIA;
+        return new Date(t).toISOString().slice(0, 10);
+    }
+
+    function isoMenos1(iso) {
+        return new Date(fechaUTC(iso).getTime() - MS_DIA).toISOString().slice(0, 10);
+    }
+
+    // % de cambio de BTC en cada día del mes lunar, contra el cierre del día anterior al día 1
+    function btcSerieMes(anio, mes) {
+        if (!btcPrecios) return null;
+        const d1 = isoDeLunar(anio, mes, 1);
+        const base = btcPrecios.get(isoMenos1(d1)) ?? btcPrecios.get(d1);
+        if (base == null) return null;
+        const serie = [];
+        for (let d = 1; d <= 28; d++) {
+            const p = btcPrecios.get(isoDeLunar(anio, mes, d));
+            serie.push({ dia: d, pct: p != null ? (p / base - 1) * 100 : null });
+        }
+        return serie.some(p => p.pct !== null) ? serie : null;
+    }
+
+    const VENTANAS = [
+        { nombre: "🌱 Iniciación", rango: "1–7",   a: 1,  b: 7 },
+        { nombre: "📈 Crecimiento", rango: "8–14", a: 8,  b: 14 },
+        { nombre: "⚖️ Maduración", rango: "15–21", a: 15, b: 21 },
+        { nombre: "🍂 Cosecha",    rango: "22–28", a: 22, b: 28 },
+        { nombre: "⬆️ 1ª mitad",   rango: "1–14",  a: 1,  b: 14, sep: true },
+        { nombre: "⬇️ 2ª mitad",   rango: "15–28", a: 15, b: 28 }
+    ];
+
+    // Para cada ventana: rendimiento de BTC en cada mes lunar completo del histórico
+    function calcularStats() {
+        const hoyIso = new Date().toISOString().slice(0, 10);
+        const anios = [...new Set([...btcPrecios.keys()].map(k => +k.slice(0, 4)))].sort();
+        let meses = 0;
+        const res = VENTANAS.map(v => {
+            const rs = [];
+            for (const a of anios) for (let m = 1; m <= 13; m++) {
+                const ini = isoDeLunar(a, m, v.a), fin = isoDeLunar(a, m, v.b);
+                if (fin >= hoyIso) continue;                 // solo ventanas ya terminadas
+                const p0 = btcPrecios.get(isoMenos1(ini)), p1 = btcPrecios.get(fin);
+                if (p0 == null || p1 == null) continue;
+                rs.push((p1 / p0 - 1) * 100);
+            }
+            rs.sort((x, y) => x - y);
+            const n = rs.length;
+            const prom = n ? rs.reduce((s, x) => s + x, 0) / n : 0;
+            const med = n ? (n % 2 ? rs[(n - 1) / 2] : (rs[n / 2 - 1] + rs[n / 2]) / 2) : 0;
+            const pos = n ? rs.filter(x => x > 0).length / n * 100 : 0;
+            meses = Math.max(meses, n);
+            return { ...v, n, prom, med, pos };
+        });
+        return { res, meses };
+    }
+
+    function renderStatsBTC() {
+        const cont = document.getElementById("statsBTC");
+        if (btcEstado !== "ok") {
+            cont.innerHTML = `<div class="stats-title">📊 BTC por fase del mes lunar</div>
+                <div class="stats-sub">${btcEstado === "cargando"
+                    ? "⏳ Descargando historial de BTC..."
+                    : "⚠️ No se pudo descargar el historial de BTC. Revisa tu conexión y recarga la página."}</div>`;
+            return;
+        }
+        const { res, meses } = calcularStats();
+        const fechas = [...btcPrecios.keys()].sort();
+        const fmt = v => { const r = Math.round(v * 10) / 10 || 0; return `${r > 0 ? "+" : ""}${r.toFixed(1)}%`; };
+        const col = v => Math.round(v * 10) === 0 ? "#cbdbe6" : v > 0 ? "#4caf50" : "#f44336";
+        let filas = "";
+        for (const r of res) {
+            filas += `<tr class="${r.sep ? "sep" : ""}">
+                <td>${r.nombre}<br><span style="font-size:0.68rem;color:#9aaec0">días ${r.rango}</span></td>
+                <td style="color:${col(r.med)}">${fmt(r.med)}</td>
+                <td style="color:${col(r.prom)}">${fmt(r.prom)}</td>
+                <td>${r.pos.toFixed(0)}%<span class="stats-bar" style="width:${(r.pos * 0.4).toFixed(0)}px"></span></td>
+            </tr>`;
+        }
+        const m1 = res.find(r => r.a === 1 && r.b === 14), m2 = res.find(r => r.a === 15 && r.b === 28);
+        cont.innerHTML = `
+            <div class="stats-title">📊 BTC por fase del mes lunar</div>
+            <div class="stats-sub">${btcFuente} · ${fechas[0]} a ${fechas[fechas.length - 1]} · ${meses} meses lunares completos</div>
+            <table class="stats-table">
+                <tr><th>Fase</th><th>Mediana</th><th>Promedio</th><th>% veces que sube</th></tr>
+                ${filas}
+            </table>
+            <div class="stats-nota">
+                🔎 Según la guía, la 1ª mitad debería subir y la 2ª bajar. En este histórico, BTC subió en la
+                1ª mitad el <b>${m1.pos.toFixed(0)}%</b> de las veces (mediana ${fmt(m1.med)}) y en la 2ª mitad
+                el <b>${m2.pos.toFixed(0)}%</b> (mediana ${fmt(m2.med)}). Un valor cercano a 50% significa que esa
+                fase se comporta como una moneda al aire.<br>
+                La mediana pesa menos los meses extremos que el promedio. Datos pasados, solo como referencia.
+            </div>`;
+    }
+
+    async function cargarBinance() {
+        const out = new Map();
+        let start = Date.UTC(2018, 0, 1);
+        for (let i = 0; i < 8; i++) {
+            const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=BTCUSDT&interval=1d&startTime=${start}&limit=1000`);
+            if (!r.ok) throw new Error("Binance " + r.status);
+            const velas = await r.json();
+            if (!Array.isArray(velas) || !velas.length) break;
+            for (const v of velas) out.set(new Date(v[0]).toISOString().slice(0, 10), parseFloat(v[4]));
+            start = velas[velas.length - 1][0] + MS_DIA;
+            if (velas.length < 1000) break;
+        }
+        if (!out.size) throw new Error("Binance sin datos");
+        return out;
+    }
+
+    async function cargarCoinGecko() {
+        const r = await fetch("https://api.coingecko.com/api/v3/coins/bitcoin/market_chart?vs_currency=usd&days=365&interval=daily");
+        if (!r.ok) throw new Error("CoinGecko " + r.status);
+        const j = await r.json();
+        const out = new Map();
+        // El punto de las 00:00 UTC equivale al cierre del día anterior
+        for (const [ms, precio] of j.prices || []) out.set(new Date(ms - 1).toISOString().slice(0, 10), precio);
+        if (!out.size) throw new Error("CoinGecko sin datos");
+        return out;
+    }
+
+    function refrescarBTC() {
+        renderMonthView(parseInt(document.getElementById("mesSelector").value) || 1);
+        renderStatsBTC();
+    }
+
+    async function cargarBTC() {
+        renderStatsBTC();
+        try {   // caché de 6 horas en el navegador
+            const c = JSON.parse(localStorage.getItem("btcCache") || "null");
+            if (c && Date.now() - c.t < 6 * 3600e3) {
+                btcPrecios = new Map(c.d); btcFuente = c.f; btcEstado = "ok";
+                refrescarBTC();
+                return;
+            }
+        } catch (e) {}
+        try {
+            btcPrecios = await cargarBinance();
+            btcFuente = "Binance (BTC/USDT)";
+        } catch (e) {
+            try {
+                btcPrecios = await cargarCoinGecko();
+                btcFuente = "CoinGecko (BTC/USD, último año)";
+            } catch (e2) {
+                btcEstado = "error";
+                refrescarBTC();
+                return;
+            }
+        }
+        btcEstado = "ok";
+        try { localStorage.setItem("btcCache", JSON.stringify({ t: Date.now(), f: btcFuente, d: [...btcPrecios] })); } catch (e) {}
+        refrescarBTC();
+    }
+
     // Acordeón para la guía
     const toggleBtn = document.getElementById("toggleEstrategia");
     const contenido = document.getElementById("estrategiaContenido");
@@ -837,6 +1107,7 @@
     icon.textContent = "▲";
 
     populateSelectors();
+    cargarBTC();
 </script>
 </body>
 </html>
