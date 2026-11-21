@@ -371,6 +371,36 @@
 
         .presion-sub { font-size: 0.72rem; color: #9aaec0; }
 
+        .day-cell { position: relative; }
+
+        .day-cell.con-evento {
+            box-shadow: 0 0 0 2px #ffd54a inset;
+        }
+
+        .evento-badge {
+            position: absolute;
+            top: -6px;
+            right: -4px;
+            font-size: 0.75rem;
+            line-height: 1;
+            background: #0c1117;
+            border: 1px solid #ffd54a;
+            border-radius: 10px;
+            padding: 1px 3px;
+            z-index: 3;
+        }
+
+        .eventos-mes {
+            margin-top: 0.8rem;
+            background: #0b141c;
+            border: 1px solid #3a3420;
+            border-radius: 1rem;
+            padding: 0.6rem 0.9rem;
+            font-size: 0.78rem;
+            line-height: 1.6;
+            color: #e8dcb5;
+        }
+
         .presion-num {
             font-size: 0.6rem;
             font-weight: 700;
@@ -554,6 +584,7 @@
                     <ul>
                         <li><strong>Equinoccios (marzo/sept):</strong> Cambio de tendencia principal. Defensivo 1 semana antes.</li>
                         <li><strong>Solsticios (jun/dic):</strong> Máximos/mínimos de medio plazo. Tomar beneficios o preparar shorts.</li>
+                        <li><strong>Eclipses 🕶️🔴🌘 y superlunas 💫:</strong> marcados en el calendario como referencia (no cambian la recomendación).</li>
                     </ul>
                 </div>
                 <div class="regla-item">
@@ -614,6 +645,36 @@
         "2027-09-23": "🍂 Equinoccio Otoño",
         "2027-12-21": "❄️ Solsticio Invierno"
     };
+
+    // Otros eventos astronómicos (solo informativos: se marcan en el calendario, no cambian las reglas).
+    // Fechas en hora del centro de México. Fuentes: NASA / Fred Espenak (eclipses y superlunas).
+    const eventosEspeciales = {
+        "2026-01-03": "💫 Superluna",
+        "2026-02-17": "🕶️ Eclipse solar anular",
+        "2026-03-03": "🔴 Eclipse lunar total",
+        "2026-08-12": "🕶️ Eclipse solar total",
+        "2026-08-27": "🌘 Eclipse lunar parcial",
+        "2026-11-24": "💫 Superluna",
+        "2026-12-23": "💫 Superluna",
+        "2027-01-22": "💫 Superluna",
+        "2027-02-06": "🕶️ Eclipse solar anular",
+        "2027-02-20": "🌘 Eclipse lunar penumbral",
+        "2027-07-18": "🌘 Eclipse lunar penumbral",
+        "2027-08-02": "🕶️ Eclipse solar total",
+        "2027-08-17": "🌘 Eclipse lunar penumbral"
+    };
+
+    // Todos los eventos de un día (equinoccios/solsticios + especiales)
+    function eventosDelDia(iso) {
+        return [eventosAstro[iso], eventosEspeciales[iso]].filter(Boolean);
+    }
+
+    // Icono corto para la esquina de la casilla
+    function iconoEvento(nombre) {
+        if (nombre.includes("Equinoccio")) return "🌍";
+        if (nombre.includes("Solsticio")) return "🌞";
+        return nombre.split(" ")[0];
+    }
 
     const COLORES_RIESGO = {
         "Bajo": "#4caf50", "Moderado": "#ffc107", "Alto": "#ff7043",
@@ -978,6 +1039,7 @@
                 <div class="info-item">📆 Gregoriano: ${diaData.gregorio}</div>
                 ${diaData.alerta ? `<div class="info-item">🔔 Alerta: ${diaData.alerta}</div>` : ''}
                 ${diaData.evento ? `<div class="info-item">✨ ${diaData.evento}</div>` : ''}
+                ${eventosEspeciales[diaData.gregorio] ? `<div class="info-item">${eventosEspeciales[diaData.gregorio]}</div>` : ''}
                 ${diaData.eventoCercano ? `<div class="info-item">✨ ${diaData.eventoCercano}</div>` : ''}
             </div>
         `;
@@ -1043,6 +1105,7 @@
                 <div class="info-item">🌓 Luna real: ${dia.moonPhase}</div>
                 ${dia.lunaLlenaCerca ? `<div class="info-item">🌕 Luna Llena a ±2 días</div>` : ''}
                 ${dia.evento ? `<div class="info-item">✨ ${dia.evento}</div>` : ''}
+                ${eventosEspeciales[dia.gregorio] ? `<div class="info-item">${eventosEspeciales[dia.gregorio]}</div>` : ''}
                 ${dia.eventoCercano ? `<div class="info-item">✨ ${dia.eventoCercano}</div>` : ''}
             </div>`;
     }
@@ -1199,12 +1262,19 @@
         const offset = monthDays.length ? monthDays[0].weekdayIdx : 0;
         for (let k = 0; k < offset; k++) html += `<div></div>`;
 
+        let hayEventos = false;
         for (const dia of monthDays) {
             const moonEmoji = dia.moonPhase.split(" ")[0];
+            const evs = eventosDelDia(dia.gregorio);
+            if (evs.length) hayEventos = true;
+            const marca = evs.length
+                ? `<span class="evento-badge" title="${evs.join(" · ")}">${evs.map(iconoEvento).join("")}</span>` : "";
+            const claseEv = evs.length ? " con-evento" : "";
             if (vista === "greg") {
                 // Color gradual según la presión combinada (verde = compradores, rojo = vendedores)
                 const p = dia.presion;
-                html += `<div class="day-cell" style="background:${colorPresion(p)};" onclick="selectDay(${month}, ${dia.lunarDay})">
+                html += `<div class="day-cell${claseEv}" style="background:${colorPresion(p)};" onclick="selectDay(${month}, ${dia.lunarDay})">
+                            ${marca}
                             <div><strong>${dia.lunarDay}</strong></div>
                             <div class="luna-icon">${moonEmoji}</div>
                             <div class="fase-sema">${dia.d13.faseSemanal.substring(0,2)}${dia.dReal.faseSemanal.substring(0,2)}</div>
@@ -1214,7 +1284,8 @@
             }
             const decision = getTradingDecision(dia);
             const bgColor = decision.color === "verde" ? "#1f4930" : decision.color === "roja" ? "#5e2a2a" : "#1e3a47";
-            html += `<div class="day-cell" style="background:${bgColor};" onclick="selectDay(${month}, ${dia.lunarDay})">
+            html += `<div class="day-cell${claseEv}" style="background:${bgColor};" onclick="selectDay(${month}, ${dia.lunarDay})">
+                        ${marca}
                         <div><strong>${dia.lunarDay}</strong></div>
                         <div class="luna-icon">${moonEmoji}</div>
                         <div class="fase-sema">${dia.faseSemanal.substring(0,2)}</div>
@@ -1234,6 +1305,12 @@
                           stroke-dasharray="6 5" vector-effect="non-scaling-stroke"/>
                  </svg>`;
         html += `</div>`;
+        if (hayEventos) {
+            const lista = monthDays.filter(d => eventosDelDia(d.gregorio).length)
+                .map(d => `<b>${+d.gregorio.slice(8)} ${MESES_CORTOS[+d.gregorio.slice(5, 7) - 1]}</b>: ${eventosDelDia(d.gregorio).join(" · ")}`)
+                .join("<br>");
+            html += `<div class="eventos-mes">✨ Eventos del mes<br>${lista}</div>`;
+        }
         if (vista === "greg") {
             html += `<div class="greg-leyenda">El color y el número de cada día son la <b>presión combinada</b> de las dos vistas
                      (−100 vendedores · +100 compradores). Más intenso = más fuerza. Iconos: 🗓️ etapa en 28 días · 🌙 etapa lunar real.</div>`;
