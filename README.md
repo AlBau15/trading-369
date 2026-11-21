@@ -44,6 +44,19 @@ cierre del ciclo (0)
 
 La **presión combinada** es el promedio de las dos vistas, en escala de −100 a +100. En la vista gregoriana, cada día se colorea según su presión (más intenso = más fuerza) y el panel indica si va ganando fuerza compradora o vendedora respecto al día anterior.
 
+## 🌌 Visión macro: el zodiaco
+
+Además del ciclo del mes, el dashboard muestra en qué **signo zodiacal** está el Sol cada día, como una lectura del momento del año. El zodiaco tropical empieza en el equinoccio de marzo, así que las 4 estaciones agrupan 3 signos cada una, igual que las 4 fases:
+
+| Etapa macro | Estación | Signos |
+|---|---|---|
+| 🌱 Iniciación | primavera | ♈ Aries · ♉ Tauro · ♊ Géminis |
+| 📈 Crecimiento | verano | ♋ Cáncer · ♌ Leo · ♍ Virgo |
+| ⚖️ Maduración | otoño | ♎ Libra · ♏ Escorpio · ♐ Sagitario |
+| 🍂 Cosecha | invierno | ♑ Capricornio · ♒ Acuario · ♓ Piscis |
+
+Dentro de cada estación, el signo **cardinal** arranca la etapa, el **fijo** la consolida y el **mutable** hace la transición a la siguiente. La tarjeta **🌌 Visión macro** muestra el signo del día, su idea central (por ejemplo, ♏ Escorpio: *la transformación, morir para renacer como una versión mejor*) y cuánto falta para el siguiente. Los cambios de signo también se marcan en el calendario. Es una lectura interpretativa, no una regla de operación.
+
 ## 📊 Pruebas con datos reales
 
 Al final de la página hay cuatro tarjetas que se calculan solas con el historial diario de BTC:
@@ -64,6 +77,8 @@ Al final de la página hay cuatro tarjetas que se calculan solas con el historia
 
 - **Precios de BTC**: se descargan en el navegador desde [Binance](https://www.binance.com) (BTC/USDT, desde 2018), con respaldo en CoinGecko. Se guardan 6 horas en caché.
 - **Fases lunares**: calculadas con el método astronómico de Jean Meeus (*Astronomical Algorithms*, cap. 49), con menos de 2 minutos de error frente a las efemérides oficiales.
+- **Signos zodiacales**: posición del Sol con Meeus (cap. 25); los cambios de signo coinciden con equinoccios y solsticios oficiales con un margen de minutos.
+- **Eventos**: equinoccios y solsticios (USNO), eclipses y superlunas (NASA / Fred Espenak).
 - **Fechas**: en hora del centro de México. Incluye equinoccios y solsticios de 2026 y 2027.
 - **Años disponibles**: 2026 y 2027.
 

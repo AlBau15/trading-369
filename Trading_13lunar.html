@@ -390,6 +390,58 @@
             z-index: 3;
         }
 
+        .macro-card {
+            background: linear-gradient(125deg, #121a2a, #0c1420);
+            border: 1px solid #2e3a5a;
+            border-radius: 1.2rem;
+            padding: 0.8rem 0.9rem;
+            margin: 0.8rem 0 0.4rem;
+        }
+
+        .macro-head { font-weight: 700; font-size: 0.95rem; }
+
+        .macro-idea { font-size: 0.8rem; color: #cbdbe6; margin: 0.3rem 0 0.6rem; }
+
+        .macro-rueda {
+            display: grid;
+            grid-template-columns: repeat(12, 1fr);
+            gap: 3px;
+        }
+
+        .macro-signo {
+            text-align: center;
+            font-size: 0.85rem;
+            padding: 0.25rem 0;
+            border-radius: 6px;
+            opacity: 0.75;
+        }
+
+        .macro-signo.actual {
+            opacity: 1;
+            outline: 2px solid #ffd54a;
+            font-weight: 700;
+        }
+
+        .macro-etapas {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            font-size: 0.6rem;
+            text-align: center;
+            margin-top: 0.25rem;
+        }
+
+        .macro-avance {
+            height: 5px;
+            background: #16212c;
+            border-radius: 3px;
+            margin: 0.55rem 0 0.4rem;
+            overflow: hidden;
+        }
+
+        .macro-avance div { height: 100%; }
+
+        .macro-sub { font-size: 0.72rem; color: #9aaec0; line-height: 1.5; }
+
         .eventos-mes {
             margin-top: 0.8rem;
             background: #0b141c;
@@ -546,10 +598,10 @@
         <div style="text-align:center;">Cargando calendario lunar...</div>
     </div>
 
-    <!-- GUÍA DE TRADING LUNAR – 8 PUNTOS CLAVE (colapsable) -->
+    <!-- GUÍA DE TRADING LUNAR – 9 PUNTOS CLAVE (colapsable) -->
     <div class="estrategia-card" id="estrategiaCard">
         <div class="estrategia-header" id="toggleEstrategia">
-            📘 GUÍA DE TRADING LUNAR – TOMA DE DECISIONES (8 puntos clave)
+            📘 GUÍA DE TRADING LUNAR – TOMA DE DECISIONES (9 puntos clave)
             <span id="toggleIcon">▼</span>
         </div>
         <div class="estrategia-contenido" id="estrategiaContenido">
@@ -613,6 +665,15 @@
                         <li>¿Luna llena ±2 días? → aplica la regla del punto 4.</li>
                         <li>¿Día 10, 17 o último del mes? → revisión o paso a stablecoins.</li>
                         <li>¿Equinoccio o solsticio ±3 días? → reduce exposición 30%.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>9️⃣ Visión macro: el zodiaco</h4>
+                    <ul>
+                        <li>El Sol recorre los 12 signos en el año. Las 4 estaciones agrupan 3 signos cada una, como las 4 fases del mes:
+                            <strong>🌱 Iniciación</strong> ♈♉♊ · <strong>📈 Crecimiento</strong> ♋♌♍ · <strong>⚖️ Maduración</strong> ♎♏♐ · <strong>🍂 Cosecha</strong> ♑♒♓.</li>
+                        <li>Dentro de cada estación: el signo <strong>cardinal</strong> arranca la etapa, el <strong>fijo</strong> la consolida y el <strong>mutable</strong> hace la transición.</li>
+                        <li>La tarjeta <strong>🌌 Visión macro</strong> muestra el signo del día, su idea central y cuánto falta para el siguiente. Es una lectura interpretativa del momento del año, no una regla de operación.</li>
                     </ul>
                 </div>
                 <div class="regla-item">
@@ -693,7 +754,9 @@
 
     // Todos los eventos de un día (equinoccios/solsticios + especiales)
     function eventosDelDia(iso) {
-        return [eventosAstro[iso], eventosEspeciales[iso]].filter(Boolean);
+        const ing = ingresosSol[iso];
+        const cambio = ing ? `${SIGNOS[ing.signo].glifo} El Sol entra a ${SIGNOS[ing.signo].nombre} (${ing.hora})` : null;
+        return [eventosAstro[iso], eventosEspeciales[iso], cambio].filter(Boolean);
     }
 
     // Icono corto para la esquina de la casilla
@@ -829,6 +892,78 @@
         return `rgb(${base.map((b, i) => Math.round(b + (fin[i] - b) * k)).join(",")})`;
     }
 
+    // ------------------------------------------------------------
+    // VISIÓN MACRO: EL ZODIACO
+    // El Sol recorre los 12 signos en un año. El zodiaco tropical empieza en el
+    // equinoccio de marzo, así que las 4 estaciones agrupan 3 signos cada una,
+    // igual que las 4 fases del mes: Iniciación, Crecimiento, Maduración, Cosecha.
+    // Dentro de cada estación: cardinal = arranque, fijo = consolidación,
+    // mutable = transición a la siguiente etapa.
+    // Posición del Sol: Meeus cap. 25 (precisión de ~15 minutos en los cambios de signo).
+    // ------------------------------------------------------------
+    const SIGNOS = [
+        { nombre: "Aries",       glifo: "♈", idea: "El inicio",            desc: "el impulso de empezar y abrir camino" },
+        { nombre: "Tauro",       glifo: "♉", idea: "La construcción",      desc: "echar raíces y hacer crecer lo valioso con paciencia" },
+        { nombre: "Géminis",     glifo: "♊", idea: "La comunicación",      desc: "curiosidad, intercambio de ideas y adaptación" },
+        { nombre: "Cáncer",      glifo: "♋", idea: "El hogar",             desc: "proteger, nutrir y cuidar lo propio" },
+        { nombre: "Leo",         glifo: "♌", idea: "El brillo",            desc: "expresión, liderazgo y creatividad" },
+        { nombre: "Virgo",       glifo: "♍", idea: "El perfeccionamiento", desc: "analizar, ordenar y mejorar con detalle" },
+        { nombre: "Libra",       glifo: "♎", idea: "El equilibrio",        desc: "armonía y balanza entre dos fuerzas" },
+        { nombre: "Escorpio",    glifo: "♏", idea: "La transformación",    desc: "morir para renacer como una versión mejor" },
+        { nombre: "Sagitario",   glifo: "♐", idea: "La búsqueda",          desc: "expansión, aventura y búsqueda de sentido" },
+        { nombre: "Capricornio", glifo: "♑", idea: "La cima",              desc: "disciplina y constancia para llegar a la meta" },
+        { nombre: "Acuario",     glifo: "♒", idea: "La innovación",        desc: "romper moldes y mirar al futuro" },
+        { nombre: "Piscis",      glifo: "♓", idea: "La disolución",        desc: "cerrar el ciclo y soltar antes de empezar de nuevo" }
+    ];
+    const ETAPAS_MACRO = [
+        { nombre: "🌱 Iniciación", estacion: "primavera", color: "#4f7a92" },
+        { nombre: "📈 Crecimiento", estacion: "verano",    color: "#4caf50" },
+        { nombre: "⚖️ Maduración",  estacion: "otoño",     color: "#ff7043" },
+        { nombre: "🍂 Cosecha",     estacion: "invierno",  color: "#f44336" }
+    ];
+    const MODALIDADES = [
+        { nombre: "cardinal", papel: "arranca la etapa" },
+        { nombre: "fijo",     papel: "consolida la etapa" },
+        { nombre: "mutable",  papel: "transición a la siguiente etapa" }
+    ];
+
+    function longitudSol(ms) {
+        const JD = ms / MS_DIA + 2440587.5, T = (JD - 2451545) / 36525, r = Math.PI / 180;
+        const L0 = 280.46646 + 36000.76983 * T + 0.0003032 * T * T;
+        const M = (357.52911 + 35999.05029 * T - 0.0001537 * T * T) * r;
+        const C = (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(M)
+                + (0.019993 - 0.000101 * T) * Math.sin(2 * M) + 0.000289 * Math.sin(3 * M);
+        const Om = (125.04 - 1934.136 * T) * r;
+        const lam = L0 + C - 0.00569 - 0.00478 * Math.sin(Om);
+        return ((lam % 360) + 360) % 360;
+    }
+
+    // Momentos exactos en que el Sol cambia de signo (fecha en hora del centro de México)
+    const ingresosSol = {};     // "YYYY-MM-DD" -> { signo, hora }
+    (function calcularIngresos() {
+        let t = Date.UTC(ANIOS[0] - 1, 11, 1);
+        const fin = Date.UTC(ANIOS[ANIOS.length - 1] + 1, 0, 31);
+        let previo = Math.floor(longitudSol(t) / 30);
+        for (const paso = 15 * 60 * 1000; t < fin; t += paso) {
+            const s = Math.floor(longitudSol(t + paso) / 30);
+            if (s !== previo) {
+                const local = new Date(t + paso - OFFSET_MX);
+                ingresosSol[local.toISOString().slice(0, 10)] = { signo: s, hora: local.toISOString().slice(11, 16) };
+                previo = s;
+            }
+        }
+    })();
+
+    // Signo solar del día (posición del Sol al mediodía en México) y su lugar en la rueda
+    function zodiacoDe(iso) {
+        const lam = longitudSol(tMedioDia(iso));
+        const idx = Math.floor(lam / 30);
+        return {
+            idx, signo: SIGNOS[idx], etapa: ETAPAS_MACRO[Math.floor(((idx + 12) % 12) / 3)],
+            modalidad: MODALIDADES[idx % 3], avance: (lam % 30) / 30
+        };
+    }
+
     function lunacionDe(iso) {
         return lunaciones.find(L => L.dN <= iso && iso < L.dSig) || null;
     }
@@ -941,6 +1076,7 @@
     // Estado de la vista
     let vista = "greg";           // "13" | "real" | "greg" (la gregoriana es la vista inicial)
     let anioActual = ANIOS[0];
+    let isoSeleccionado = null;   // fecha gregoriana del día que se está consultando
     let diaSeleccionado = null;
 
     const cal = () => vista === "13" ? calendario13 : vista === "real" ? calendarioReal : calendarioGreg;
@@ -1043,6 +1179,7 @@
         }
         if (vista === "greg") { renderDiaPanelGreg(diaData); return; }
         diaSeleccionado = diaData.lunarMonth !== "Cierre" ? diaData.lunarDay : null;
+        isoSeleccionado = diaData.gregorio;
         const decision = getTradingDecision(diaData);
         const c = COLORES_RIESGO[decision.riesgo] || "#ffc107";
         let titulo;
@@ -1062,6 +1199,7 @@
                 <div class="info-item">🧭 Vista: ${vista === "13" ? "13 meses (28 días)" : "Ciclo lunar real"}</div>
                 <div class="info-item">🌙 Fase semanal: ${diaData.faseSemanal}</div>
                 <div class="info-item">🌓 Luna real: ${diaData.moonPhase}</div>
+                <div class="info-item">${zodiacoDe(diaData.gregorio).signo.glifo} Temporada de ${zodiacoDe(diaData.gregorio).signo.nombre} · ${zodiacoDe(diaData.gregorio).signo.idea}</div>
                 ${diaData.lunaLlenaCerca ? `<div class="info-item">🌕 Luna Llena a ±2 días</div>` : ''}
                 <div class="info-item">📆 Gregoriano: ${diaData.gregorio}</div>
                 ${diaData.alerta ? `<div class="info-item">🔔 Alerta: ${diaData.alerta}</div>` : ''}
@@ -1103,6 +1241,7 @@
 
     function renderDiaPanelGreg(dia) {
         diaSeleccionado = dia.lunarDay;
+        isoSeleccionado = dia.gregorio;
         const d13 = dia.d13, dR = dia.dReal;
         const p = dia.presion, ayer = presion(sumarDias(dia.gregorio, -1));
         const tendencia = p > ayer ? "↑ ganando fuerza compradora" : p < ayer ? "↓ ganando fuerza vendedora" : "→ estable";
@@ -1130,6 +1269,7 @@
             ${bloqueVista("🌙 Vista ciclo lunar real", etiquetaReal(dR), dR)}
             <div class="info-grid">
                 <div class="info-item">🌓 Luna real: ${dia.moonPhase}</div>
+                <div class="info-item">${zodiacoDe(dia.gregorio).signo.glifo} Temporada de ${zodiacoDe(dia.gregorio).signo.nombre} · ${zodiacoDe(dia.gregorio).signo.idea}</div>
                 ${dia.lunaLlenaCerca ? `<div class="info-item">🌕 Luna Llena a ±2 días</div>` : ''}
                 ${dia.evento ? `<div class="info-item">✨ ${dia.evento}</div>` : ''}
                 ${eventosEspeciales[dia.gregorio] ? `<div class="info-item">${eventosEspeciales[dia.gregorio]}</div>` : ''}
@@ -1275,6 +1415,38 @@
         return `<div class="ciclo-chart"><div class="ciclo-chart-title">${info.titulo}</div>${svg}${pie}</div>`;
     }
 
+    // Tarjeta "Visión macro": en qué signo y etapa del año está el día consultado
+    function renderMacro(iso) {
+        if (!iso) return "";
+        const z = zodiacoDe(iso);
+        const fechas = Object.keys(ingresosSol).sort();
+        const previo = [...fechas].reverse().find(f => f <= iso) || iso;
+        const siguiente = fechas.find(f => f > iso);
+        const total = siguiente ? difDias(previo, siguiente) : 30;
+        const diaDelSigno = Math.min(total, difDias(previo, iso) + 1);
+        const sig = siguiente ? SIGNOS[ingresosSol[siguiente].signo] : null;
+        let rueda = "";
+        SIGNOS.forEach((s, i) => {
+            const et = ETAPAS_MACRO[Math.floor(i / 3)];
+            const actual = i === z.idx;
+            rueda += `<div class="macro-signo${actual ? " actual" : ""}" style="background:${et.color}${actual ? "" : "40"}" title="${s.nombre} · ${s.idea}">${s.glifo}</div>`;
+        });
+        const etiquetas = ETAPAS_MACRO.map(e => `<span style="color:${e.color}">${e.nombre.replace(/^\S+\s/, "")}</span>`).join("");
+        return `
+            <div class="macro-card">
+                <div class="macro-head">🌌 Visión macro · Temporada de ${z.signo.glifo} ${z.signo.nombre}</div>
+                <div class="macro-idea"><b>${z.signo.idea}:</b> ${z.signo.desc}.</div>
+                <div class="macro-rueda">${rueda}</div>
+                <div class="macro-etapas">${etiquetas}</div>
+                <div class="macro-avance"><div style="width:${(diaDelSigno / total * 100).toFixed(0)}%; background:${z.etapa.color}"></div></div>
+                <div class="macro-sub">
+                    Etapa macro: <b style="color:${z.etapa.color}">${z.etapa.nombre}</b> (${z.etapa.estacion}) ·
+                    signo ${z.modalidad.nombre}: ${z.modalidad.papel} · día ${diaDelSigno} de ${total}
+                    ${sig ? `<br>Siguiente: ${sig.glifo} ${sig.nombre} (${sig.idea.toLowerCase()}) desde el ${fechaCorta(siguiente)}` : ""}
+                </div>
+            </div>`;
+    }
+
     function renderMonthView(month) {
         const info = infoMes(month);
         const monthDays = cal().filter(d => d.anio === anioActual && d.lunarMonth === month)
@@ -1282,6 +1454,7 @@
         const container = document.getElementById("monthlyView");
         const semanaHeaders = ["D","L","M","M","J","V","S"];
         let html = `<div style="display:flex; justify-content:space-between;"><div class="month-title">📆 ${anioActual} · ${info.nombre} · ${info.N} días</div><div style="font-size:0.7rem;">🌙 Clic en día para consultar</div></div>`;
+        html += renderMacro(isoSeleccionado || (monthDays[0] && monthDays[0].gregorio));
         html += `<div class="calendar-grid">`;
         semanaHeaders.forEach(h => html += `<div class="weekday-label">${h}</div>`);
 
