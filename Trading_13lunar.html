@@ -1415,6 +1415,81 @@
         return { res, meses };
     }
 
+    // ------------------------------------------------------------
+    // PRUEBA EN VIVO: solo cuenta lo que pasa desde INICIO_PRUEBA.
+    // El histórico desde 2018 ya se usó para formular las ideas; esta tarjeta mide
+    // si se sostienen con datos nuevos que el modelo nunca vio.
+    // ------------------------------------------------------------
+    const INICIO_PRUEBA = "2026-11-21";
+
+    function calcularPruebaEnVivo() {
+        const hoyIso = new Date().toISOString().slice(0, 10);
+        const ventanas = (key) => {
+            const rs = [];
+            for (const p of periodosHistoricos("real")) {
+                const { ini, fin } = p[key];
+                if (ini < INICIO_PRUEBA || fin >= hoyIso) continue;
+                const p0 = btcPrecios.get(sumarDias(ini, -1)), p1 = btcPrecios.get(fin);
+                if (p0 != null && p1 != null) rs.push((p1 / p0 - 1) * 100);
+            }
+            return resumenRet(rs);
+        };
+        const r7 = { fuerte: [], debil: [] };
+        for (let iso = INICIO_PRUEBA; sumarDias(iso, 7) < hoyIso; iso = sumarDias(iso, 1)) {
+            const p0 = btcPrecios.get(iso), p7 = btcPrecios.get(sumarDias(iso, 7));
+            if (p0 == null || p7 == null) continue;
+            const pr = presion(iso);
+            if (pr >= 50) r7.fuerte.push((p7 / p0 - 1) * 100);
+            else if (pr <= -50) r7.debil.push((p7 / p0 - 1) * 100);
+        }
+        return {
+            cre: ventanas("cre"), m1: ventanas("m1"), m2: ventanas("m2"),
+            fuerte: resumenRet(r7.fuerte), debil: resumenRet(r7.debil),
+            dias: Math.max(0, difDias(INICIO_PRUEBA, hoyIso))
+        };
+    }
+
+    function renderPruebaEnVivo() {
+        const v = calcularPruebaEnVivo();
+        const h = calcularStats("real").res;
+        const hCre = h.find(r => r.key === "cre"), hM1 = h.find(r => r.key === "m1"), hM2 = h.find(r => r.key === "m2");
+        const hp = calcularPruebaPresion();
+        const col = x => Math.round(x * 10) === 0 ? "#cbdbe6" : x > 0 ? "#4caf50" : "#f44336";
+        const vivo = (r, usarMed = true) => r.n
+            ? `<b>${r.pos.toFixed(0)}%</b><br><span style="font-size:0.7rem;color:${col(usarMed ? r.med : r.prom)}">${fmtPct(usarMed ? r.med : r.prom)} · ${r.n}</span>`
+            : `<span style="color:#9aaec0">—</span>`;
+        const hist = (pos, val) => `${pos.toFixed(0)}%<br><span style="font-size:0.7rem;color:${col(val)}">${fmtPct(val)}</span>`;
+        const lunaciones = v.m2.n;
+        const estado = lunaciones < 3
+            ? `⏳ Lunaciones completas en la prueba: <b>${lunaciones}</b>. Con menos de 3 los números todavía no dicen nada; lo ideal es juntar de 6 a 12.`
+            : lunaciones < 6
+            ? `🟡 Lunaciones completas: <b>${lunaciones}</b>. Ya hay una primera lectura, pero todavía es poca muestra.`
+            : `🟢 Lunaciones completas: <b>${lunaciones}</b>. Ya hay suficiente para comparar con el histórico.`;
+        return `
+            <div class="stats-title">🧪 Prueba en vivo · desde ${fechaCorta(INICIO_PRUEBA)} ${INICIO_PRUEBA.slice(0, 4)}</div>
+            <div class="stats-sub">Solo datos nuevos (${v.dias} días). Columna "Histórico" = todo desde 2018, para comparar.</div>
+            <table class="stats-table">
+                <tr><th>Qué se mide</th><th>En vivo</th><th>Histórico</th></tr>
+                <tr><td>📈 Crecimiento lunar<br><span style="font-size:0.68rem;color:#9aaec0">🌓 → 🌕 · % que sube</span></td>
+                    <td>${vivo(v.cre)}</td><td>${hist(hCre.pos, hCre.med)}</td></tr>
+                <tr><td>⬆️ 1ª mitad lunar<br><span style="font-size:0.68rem;color:#9aaec0">🌑 → 🌕</span></td>
+                    <td>${vivo(v.m1)}</td><td>${hist(hM1.pos, hM1.med)}</td></tr>
+                <tr><td>⬇️ 2ª mitad lunar<br><span style="font-size:0.68rem;color:#9aaec0">🌕 → 🌑</span></td>
+                    <td>${vivo(v.m2)}</td><td>${hist(hM2.pos, hM2.med)}</td></tr>
+                <tr class="sep"><td>🟢 Presión compradora fuerte<br><span style="font-size:0.68rem;color:#9aaec0">BTC 7 días después</span></td>
+                    <td>${vivo(v.fuerte, false)}</td><td>${hist(hp[0].d7.pos, hp[0].d7.prom)}</td></tr>
+                <tr><td>🔴 Presión vendedora fuerte<br><span style="font-size:0.68rem;color:#9aaec0">BTC 7 días después</span></td>
+                    <td>${vivo(v.debil, false)}</td><td>${hist(hp[4].d7.pos, hp[4].d7.prom)}</td></tr>
+            </table>
+            <div class="stats-nota">
+                ${estado}<br>
+                En vivo: % de veces que sube · cambio (mediana en fases, promedio en presión) · número de casos.<br>
+                ✅ La idea se sostiene si Crecimiento y la 1ª mitad siguen arriba de ~58% y la presión compradora fuerte
+                supera claramente a la vendedora fuerte.
+            </div>
+            <div style="height:1.6rem"></div>`;
+    }
+
     // Prueba de la presión: ¿qué hizo BTC después de cada nivel de presión?
     // La presión de cada día se conoce de antemano (es calendario), así que medimos el
     // cambio de BTC del cierre de ese día al cierre de 1 y de 7 días después.
@@ -1564,7 +1639,7 @@
                 <td>${celda(b.res[i])}</td>
             </tr>`;
         });
-        cont.innerHTML = renderPruebaPresion() + renderPruebaVolatilidad() + `
+        cont.innerHTML = renderPruebaEnVivo() + renderPruebaPresion() + renderPruebaVolatilidad() + `
             <div class="stats-title" style="margin-top:1.6rem">📊 BTC por fase · comparación de vistas</div>
             <div class="stats-sub">${btcFuente} · ${fechas[0]} a ${fechas[fechas.length - 1]} ·
                 ${a.meses} meses de 28 días y ${b.meses} lunaciones completas</div>
