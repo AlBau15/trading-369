@@ -2,7 +2,7 @@
 
 Calendario estratégico que combina **ciclos lunares** con el comportamiento real de **Bitcoin (BTC)**, para tener cada día una referencia clara de la etapa del ciclo, la presión compradora o vendedora y una recomendación de disciplina, todo respaldado por estadística con datos reales desde 2018.
 
-**👉 Ver el dashboard:** [htmlpreview.github.io/?…/Trading_13lunar.html](https://htmlpreview.github.io/?https://github.com/AlBau15/trading-369/blob/main/Trading_13lunar.html)
+**👉 Ver el dashboard:** [albau15.github.io/trading-369](https://albau15.github.io/trading-369/)
 
 > ⚠️ **Aviso:** este proyecto es una herramienta de referencia y disciplina, no una recomendación de inversión. Los resultados históricos no garantizan resultados futuros.
 
@@ -69,7 +69,7 @@ Al final de la página hay cuatro tarjetas que se calculan solas con el historia
 
 ## Cómo usarlo
 
-1. Abre el [enlace del dashboard](https://htmlpreview.github.io/?https://github.com/AlBau15/trading-369/blob/main/Trading_13lunar.html). Abre directo en el día de hoy.
+1. Abre [albau15.github.io/trading-369](https://albau15.github.io/trading-369/). Abre directo en el día de hoy.
 2. Revisa la **presión del día** y la etapa de cada vista en el panel superior.
 3. Usa el selector **🧭 Vista** para cambiar entre las tres vistas, y toca cualquier día del calendario para consultarlo.
 4. Una vez al mes, revisa la tarjeta **🧪 Prueba en vivo**.
@@ -79,6 +79,7 @@ Al final de la página hay cuatro tarjetas que se calculan solas con el historia
 Todo el proyecto está en un solo archivo, sin instalación ni dependencias:
 
 ```
+index.html             Página principal de GitHub Pages (abre el dashboard)
 Trading_13lunar.html   Dashboard completo (HTML + CSS + JavaScript)
 README.md              Este documento
 ```
