@@ -546,60 +546,87 @@
         <div style="text-align:center;">Cargando calendario lunar...</div>
     </div>
 
-    <!-- GUÍA DE TRADING LUNAR – 5 PUNTOS CLAVE (colapsable) -->
+    <!-- GUÍA DE TRADING LUNAR – 8 PUNTOS CLAVE (colapsable) -->
     <div class="estrategia-card" id="estrategiaCard">
         <div class="estrategia-header" id="toggleEstrategia">
-            📘 GUÍA DE TRADING LUNAR – TOMA DE DECISIONES (5 puntos clave)
+            📘 GUÍA DE TRADING LUNAR – TOMA DE DECISIONES (8 puntos clave)
             <span id="toggleIcon">▼</span>
         </div>
         <div class="estrategia-contenido" id="estrategiaContenido">
             <div class="regla-grid">
                 <div class="regla-item">
-                    <h4>1️⃣ Fases semanales y acción</h4>
+                    <h4>1️⃣ Las tres vistas</h4>
                     <ul>
-                        <li><strong>🌱 Iniciación (días 1-7):</strong> Observación, acumulación silenciosa. 0–20% capital.</li>
-                        <li><strong>📈 Crecimiento (días 8-14):</strong> Entradas agresivas, añadir a ganadores. 20–50%.</li>
-                        <li><strong>⚖️ Maduración (días 15-21):</strong> Mantener, ajustar stops, reducir a 30%.</li>
-                        <li><strong>🍂 Cosecha/Cierre (días 22-28):</strong> Tomar ganancias, cerrar especulativo. &lt;10%.</li>
+                        <li><strong>📅 Gregoriano (ambas):</strong> vista principal. El calendario normal con la presión combinada y la etapa de las otras dos vistas en cada día.</li>
+                        <li><strong>🗓️ 13 meses (28 días):</strong> 13 meses de 28 días desde el 1 de enero + Día Fuera del Tiempo (31 dic).</li>
+                        <li><strong>🌙 Ciclo lunar real:</strong> cada mes va de una luna nueva a la siguiente (29–30 días).</li>
                     </ul>
                 </div>
                 <div class="regla-item">
-                    <h4>2️⃣ Combinación con Lunas Llenas</h4>
+                    <h4>2️⃣ Fases y acción</h4>
                     <ul>
-                        <li><strong>Llena en Iniciación:</strong> Falsa salida → esperar 48h.</li>
-                        <li><strong>Llena en Crecimiento:</strong> Ruptura alcista → añadir posición.</li>
-                        <li><strong>Llena en Maduración:</strong> Techo potencial → reducir 50%.</li>
-                        <li><strong>Llena en Cosecha:</strong> Giro brusco → cerrar todo.</li>
+                        <li><strong>🌱 Iniciación</strong> (días 1–7 · 🌑→🌓): observación, acumulación silenciosa. 0–20% capital.</li>
+                        <li><strong>📈 Crecimiento</strong> (días 8–14 · 🌓→🌕): entradas, añadir a ganadores. 20–50%.</li>
+                        <li><strong>⚖️ Maduración</strong> (días 15–21 · 🌕→🌗): mantener, ajustar stops, reducir a 30%.</li>
+                        <li><strong>🍂 Cosecha</strong> (días 22–28 · 🌗→🌑): tomar ganancias, cerrar especulativo. &lt;10%.</li>
                     </ul>
                 </div>
                 <div class="regla-item">
-                    <h4>3️⃣ Días de Revisión Estratégica</h4>
+                    <h4>3️⃣ Presión combinada (libro de órdenes)</h4>
                     <ul>
-                        <li><strong>Día 10 del mes (Crecimiento):</strong> Revisar entradas de semana 1. Cortar pérdidas rápido.</li>
-                        <li><strong>Día 17 del mes (Maduración):</strong> Revisar divergencias, reducir apalancamiento.</li>
+                        <li>Cada vista aporta una fuerza que <strong>crece y se desvanece gradualmente</strong>: 0 al inicio del ciclo, máxima compra a mitad de la subida, <strong>0 en el pico</strong> (día 14–15 / luna llena), máxima venta a mitad de la bajada.</li>
+                        <li>La presión del día es el promedio de las dos vistas: <strong>−100 vendedores · +100 compradores</strong>.</li>
+                        <li>🟢 +50 o más: compradora fuerte · 🟩 +15 a +49 · ⬜ −14 a +14 neutral · 🟥 −15 a −49 · 🔴 −50 o menos: vendedora fuerte.</li>
+                        <li>Fíjate en la <strong>tendencia</strong> (↑ ganando / ↓ perdiendo fuerza) además del número.</li>
                     </ul>
                 </div>
                 <div class="regla-item">
-                    <h4>4️⃣ Eventos astrológicos como puntos de giro</h4>
+                    <h4>4️⃣ Luna llena (±2 días)</h4>
                     <ul>
-                        <li><strong>Equinoccios (marzo/sept):</strong> Cambio de tendencia principal. Defensivo 1 semana antes.</li>
-                        <li><strong>Solsticios (jun/dic):</strong> Máximos/mínimos de medio plazo. Tomar beneficios o preparar shorts.</li>
-                        <li><strong>Eclipses 🕶️🔴🌘 y superlunas 💫:</strong> marcados en el calendario como referencia (no cambian la recomendación).</li>
+                        <li><strong>En Iniciación:</strong> posible falsa salida → esperar 48h.</li>
+                        <li><strong>En Crecimiento:</strong> posible ruptura alcista → añadir posición.</li>
+                        <li><strong>En Maduración:</strong> techo potencial → reducir 50%.</li>
+                        <li><strong>En Cosecha:</strong> giro brusco → cerrar todo y pasar a stablecoins.</li>
                     </ul>
                 </div>
                 <div class="regla-item">
-                    <h4>5️⃣ Flujo de decisión diario (checklist)</h4>
+                    <h4>5️⃣ Días clave del mes</h4>
                     <ul>
-                        <li>¿Fase semanal? → Iniciación (observa) / Crecimiento (entra) / Maduración (reduce) / Cosecha (vende).</li>
-                        <li>¿Luna Llena ±2 días? → Aplica regla específica.</li>
-                        <li>¿Día 10 o 17? → Revisión estratégica obligatoria.</li>
-                        <li>¿Evento astrológico ±3 días? → Reduce exposición 30%.</li>
-                        <li>¿Día 28? → Pasa a stablecoins hasta el día 1 siguiente.</li>
+                        <li><strong>Día 10 (Crecimiento):</strong> revisar entradas de la semana 1, cortar pérdidas rápido.</li>
+                        <li><strong>Día 17 (Maduración):</strong> revisar divergencias, reducir apalancamiento.</li>
+                        <li><strong>Último día del mes</strong> (día 28, o el día antes de la luna nueva en la vista lunar): pasar a stablecoins hasta el día 1.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>6️⃣ Eventos astronómicos</h4>
+                    <ul>
+                        <li><strong>🌍 Equinoccios y 🌞 solsticios:</strong> posibles puntos de giro. Reducir exposición 30% en los ±3 días.</li>
+                        <li><strong>🕶️ Eclipses solares, 🔴🌘 eclipses lunares y 💫 superlunas:</strong> marcados con borde dorado como referencia; no cambian la recomendación.</li>
+                        <li>La lista de <strong>✨ eventos del mes</strong> aparece debajo del calendario.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>7️⃣ Checklist diario</h4>
+                    <ul>
+                        <li>¿Presión del día y su tendencia? → ¿compradores o vendedores ganando fuerza?</li>
+                        <li>¿Etapa en cada vista? → si no coinciden, actuar con más cautela.</li>
+                        <li>¿Luna llena ±2 días? → aplica la regla del punto 4.</li>
+                        <li>¿Día 10, 17 o último del mes? → revisión o paso a stablecoins.</li>
+                        <li>¿Equinoccio o solsticio ±3 días? → reduce exposición 30%.</li>
+                    </ul>
+                </div>
+                <div class="regla-item">
+                    <h4>8️⃣ Lo que dicen los datos</h4>
+                    <ul>
+                        <li>Histórico de BTC desde 2018: la mayoría de las fases se comportan cerca de una <strong>moneda al aire (~50%)</strong>.</li>
+                        <li>La señal más consistente: <strong>Crecimiento lunar (🌓→🌕)</strong>, que subió alrededor del 60% de las veces.</li>
+                        <li>BTC se mueve <strong>~2.2% al día</strong> en cualquier fase: stops muy cerrados saltan por ruido normal.</li>
+                        <li>La tarjeta <strong>🧪 Prueba en vivo</strong> (desde el 21 nov 2026) dirá si las ideas se sostienen con datos nuevos. Revísala cada mes.</li>
                     </ul>
                 </div>
             </div>
             <div style="margin-top:1rem; text-align:center; font-size:0.8rem; background:#0a111a; padding:0.5rem; border-radius:2rem;">
-                🧠 Aplica estas reglas todos los días. El dashboard te dará la recomendación automática.
+                🧠 Úsala como guía de disciplina y referencia, no como señal segura de compra o venta. El dashboard calcula la recomendación de cada día automáticamente.
             </div>
         </div>
     </div>
@@ -1845,8 +1872,8 @@
         contenido.classList.toggle("visible");
         icon.textContent = contenido.classList.contains("visible") ? "▲" : "▼";
     });
-    contenido.classList.add("visible");
-    icon.textContent = "▲";
+    // La guía inicia cerrada para que el calendario quede a la vista; se abre tocando el título
+    icon.textContent = "▼";
 
     populateSelectors();
     cargarBTC();
