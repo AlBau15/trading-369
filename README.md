@@ -115,4 +115,4 @@ El código está organizado en secciones comentadas en español: fechas, fases l
 
 ---
 
-Creado por **Alberto Bautista** · Veracruz, México
+Creado por **@A3B6M9** · Veracruz, México
